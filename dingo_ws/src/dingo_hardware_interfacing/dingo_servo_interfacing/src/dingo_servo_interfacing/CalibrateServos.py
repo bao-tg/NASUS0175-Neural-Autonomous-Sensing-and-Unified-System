@@ -42,7 +42,6 @@ CALIBRATION PROCESS
     LOWER servos: positive angles rotate clockwise for left and anticlockwise for right (up on diagram)
 5. Once calibration offsets have all been found, copy values of "offsets" array to the hardware interface
     and replace values of "self.physical_calibration_offsets"
-
 '''
 
 #-------- MOVING CALIBRATED LEGS TO THE HOME POSITION -------- #
@@ -88,16 +87,16 @@ else:
 
                 #               0                  1                2               3
                 #  0 [[front_right_hip  , front_left_hip  , back_right_hip  , back_left_hip  ]
-                #  1  [front_right_upper, front_left_upper, back_right_upper, back_left_upper]
+                #  1  [front_right_upper, front_left_upper,  back_right_upper, back_left_upper]
                 #  2  [front_right_lower, front_left_lower, back_right_lower, back_left_lower]] """
 
 offsets = np.array(
-                    [[70, 107, 115, 64],
-                    [35, 10, 15, 22],
-                    [16, 27, 35, 14]])
+                    [[83, 97, 97, 85],
+                    [115, 2, 43, 0],
+                    [38, 10, 38, 8]])
 
-
-servo_name = ""
+#br, bl
+servo_name = "fr"
 if len(sys.argv) > 1 and sys.argv[1] in servo_dict:
     servo_name = sys.argv[1]
 
@@ -106,6 +105,7 @@ if len(sys.argv) > 1 and sys.argv[1] in servo_dict:
     else:
         print('DINGO: Motors Relaxed.\n')
 
+# Dingo.calibrate_servo(Dingo.front_left_upper)
 if servo_name == "fr" or servo_name == "all":
     Dingo.moveAbsAngle(Dingo.front_right_hip  ,offsets[0,0]+pos[0])
     Dingo.moveAbsAngle(Dingo.front_right_upper,offsets[1,0]+pos[1])

@@ -6,8 +6,8 @@ import rospy
 
 class HardwareInterface():
     def __init__(self,link):
-        self.pwm_max = 2400
-        self.pwm_min = 370
+        self.pwm_max = 2700
+        self.pwm_min = 500
         self.link = link
         self.servo_angles = np.zeros((3,4))
         self.kit = ServoKit(channels=16) #Defininng a new set of servos uising the Adafruit ServoKit LIbrary
@@ -29,13 +29,13 @@ class HardwareInterface():
         """ 'servo_multipliers' and 'complementary_angle' both work to flip some angles, x, to (180-x) so that movement on each leg is consistent despite
             physical motor oritentation changes """
         self.servo_multipliers = np.array(
-                            [[-1, 1, 1, -1], 
-                            [1, -1, 1, -1], 
-                            [1, -1, 1, -1]])
+                            [[1, -1, -1, 1], 
+                            [-1, 1, -1, 1], 
+                            [-1, 1, -1, 1]])
         self.complementary_angle = np.array(
-                            [[180, 0, 0, 180], 
-                            [0, 180, 0, 180], 
-                            [0, 180, 0, 180]])
+                            [[0, 180, 180, 0], 
+                            [180, 0, 180, 0], 
+                            [180, 0, 180, 0]])
 
         """ 'physical_calibration_offsets' are the angle required for the servo to be at their 'zero'locations. These zero locations
             are NOT the angles deifned in the IK, but rather locations that allow practical usage of the servo's 180 degree range of motion. 
@@ -45,9 +45,9 @@ class HardwareInterface():
             - Offsets for LOWER leg servos map allign the servo so that it is vertically down at zero degrees. Note that IK requires a transformation of
                 angle_sent_to_servo = (180-angle_from_IK) + 90 degrees to map to this physcial servo location.  """
         self.physical_calibration_offsets = np.array(
-                    [[75, 130, 113, 73],
-                    [29, 13, 33, 15],
-                    [26, 12, 30, 4]])
+                     [[83, 97, 97, 85],
+                    [115, 2, 43, 0],
+                    [38, 10, 38, 8]])
         #applying calibration values to all servos
         self.create()
 
@@ -121,7 +121,11 @@ class HardwareInterface():
             self.servo_angles[1,leg] = m.degrees( THETA2              ) # servo zero is same as IK zero
             self.servo_angles[2,leg] = m.degrees( m.pi/2 + m.pi-THETA0) # servo zero is different to IK zero
         # print('Uncorrected servo_angles: ',self.servo_angles)
-
+            
+        # print("joint angles (degrees): \n", np.round(np.degrees(joint_angles), 1))
+        print("raw servo angles (degrees): \n", np.round(self.servo_angles[:,0], 1))
+        # print("servo angles after calibration (degrees): \n", np.round(self.servo_angles + self.physical_calibration_offsets, 1))
+        
         # Adding final physical offset angles from servo calibration and clipping to 180 degree max
         self.servo_angles = np.clip(self.servo_angles + self.physical_calibration_offsets,0,180)
         

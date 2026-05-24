@@ -6,8 +6,8 @@ import math as m
 
 class motor_config():
     def __init__(self):
-        self.pwm_max = 2400
-        self.pwm_min = 370
+        self.pwm_max = 2700
+        self.pwm_min = 500
         self.kit = ServoKit(channels=16) #Defininng a new set of servos uising the Adafruit ServoKit LIbrary
         
         #DefinING servo indices
@@ -43,9 +43,9 @@ class motor_config():
                               [13,9,1,5], 
                               [12,8,0,4]])
 
-        self.right_leg_servo_list = [self.front_right_upper,self.front_right_lower,self.back_right_upper,self.back_right_lower]
-        self.left_leg_servos_list = [ self.front_left_upper, self.front_left_lower,self.back_left_upper,self.back_left_lower]
-        self.hip_opposite_list = [self.front_right_hip,self.back_left_hip]
+        self.right_leg_servo_list = [self.back_right_upper,self.back_right_lower,self.front_right_upper,self.front_right_lower]
+        # self.left_leg_servos_list = [ self.front_left_upper, self.front_left_lower,self.back_left_upper,self.back_left_lower]
+        self.hip_opposite_list = [self.front_left_hip, self.back_right_hip]
 
         #applying calibration values to all servos
         self.create()
@@ -68,7 +68,8 @@ class motor_config():
     def moveAbsAngle(self,servo_number,angle):
         
         # Takes 180-angle so that the movement it the same as the right lef
-        if servo_number in self.left_leg_servos_list:
+        # if servo_number in self.left_leg_servos_list:
+        if servo_number in self.right_leg_servo_list:
             self.kit.servo[servo_number].angle = 180 - angle
         elif servo_number in self.hip_opposite_list: #corrects hip angle such that higher numbers are angles of elevation. Higher hip values fo all lift up
             self.kit.servo[servo_number].angle = 180 - angle

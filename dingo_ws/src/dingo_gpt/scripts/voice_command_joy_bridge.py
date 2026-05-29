@@ -143,8 +143,10 @@ class VoiceCommandJoyBridge(object):
             self.pub_tts.publish("Sitting down.")
 
     def run_stand(self):
-        # Keyboard key "2" maps to Joy button 0 / hop_event in the existing input node.
-        self.pulse_button(0)
+        axes = self.neutral_axes()
+        axes[7] = 1.0
+        self.hold_axes(axes, self.sit_duration)
+        self.publish_neutral()
         if self.speak_ack:
             self.pub_tts.publish("Standing up.")
 

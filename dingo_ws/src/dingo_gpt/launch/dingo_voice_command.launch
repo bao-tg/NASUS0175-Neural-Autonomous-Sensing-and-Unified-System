@@ -1,0 +1,41 @@
+<launch>
+  <arg name="is_sim" default="0"/>
+  <arg name="is_physical" default="1"/>
+  <arg name="use_imu" default="0"/>
+  <arg name="serial_port" default="/dev/ttyS0"/>
+
+  <arg name="audio_device" default="plughw:2,0"/>
+  <arg name="playback_device" default="plughw:2,0"/>
+  <arg name="wake_phrase" default="hey robot"/>
+  <arg name="wake_engine" default="cloud"/>
+  <arg name="stt_model" default="gpt-4o-transcribe"/>
+  <arg name="command_start_delay" default="2.4"/>
+
+  <arg name="step_duration" default="0.35"/>
+  <arg name="linear_axis_value" default="0.5"/>
+  <arg name="turn_axis_value" default="0.5"/>
+
+  <include file="$(find dingo)/launch/dingo.launch">
+    <arg name="is_sim" value="$(arg is_sim)"/>
+    <arg name="is_physical" value="$(arg is_physical)"/>
+    <arg name="use_imu" value="$(arg use_imu)"/>
+    <arg name="use_keyboard" value="0"/>
+    <arg name="use_joystick" value="0"/>
+    <arg name="serial_port" value="$(arg serial_port)"/>
+  </include>
+
+  <include file="$(find dingo_gpt)/launch/dingo_voice.launch">
+    <arg name="audio_device" value="$(arg audio_device)"/>
+    <arg name="playback_device" value="$(arg playback_device)"/>
+    <arg name="wake_phrase" value="$(arg wake_phrase)"/>
+    <arg name="wake_engine" value="$(arg wake_engine)"/>
+    <arg name="stt_model" value="$(arg stt_model)"/>
+    <arg name="command_start_delay" value="$(arg command_start_delay)"/>
+  </include>
+
+  <node pkg="dingo_gpt" type="voice_command_joy_bridge.py" name="voice_command_joy_bridge" output="screen">
+    <param name="step_duration" value="$(arg step_duration)"/>
+    <param name="linear_axis_value" value="$(arg linear_axis_value)"/>
+    <param name="turn_axis_value" value="$(arg turn_axis_value)"/>
+  </node>
+</launch>

@@ -9,6 +9,7 @@ project(dingo_gpt)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  sensor_msgs
   std_msgs
 )
 
@@ -163,6 +164,7 @@ catkin_install_python(PROGRAMS
   scripts/stt_node.py
   scripts/intent_llm_node.py
   scripts/tts_node.py
+  scripts/voice_command_joy_bridge.py
   scripts/wakeup_and_record_node.py
   scripts/scene_describer_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

@@ -4,7 +4,7 @@
   <arg name="wake_phrase" default="hey robot"/>
   <arg name="wake_engine" default="cloud"/>
   <arg name="stt_model" default="gpt-4o-transcribe"/>
-  <arg name="command_start_delay" default="2.4"/>
+  <arg name="command_start_delay" default="0.8"/>
   <arg name="camera_source" default="csi"/>
   <arg name="camera_device" default="/dev/video0"/>
 

@@ -42,7 +42,7 @@ class WakeupAndRecordNode(object):
         self.silence_rms = int(rospy.get_param("~silence_rms", 450))
         self.wake_min_rms = int(rospy.get_param("~wake_min_rms", 250))
         self.min_command_seconds = float(rospy.get_param("~min_command_seconds", 0.6))
-        self.command_start_delay = float(rospy.get_param("~command_start_delay", 2.4))
+        self.command_start_delay = float(rospy.get_param("~command_start_delay", 0.8))
         self.wake_cooldown_seconds = float(rospy.get_param("~wake_cooldown_seconds", 2.0))
         self.language = rospy.get_param("~language", "")
         self.stt_model = rospy.get_param("~stt_model", "gpt-4o-transcribe")

@@ -21,6 +21,7 @@ class VoiceCommandJoyBridge(object):
         self.step_duration = float(rospy.get_param("~step_duration", 0.35))
         self.turn_duration = float(rospy.get_param("~turn_duration", 0.8))
         self.turn_around_duration = float(rospy.get_param("~turn_around_duration", 1.6))
+        self.seconds_per_90_degrees = float(rospy.get_param("~seconds_per_90_degrees", 3.0))
         self.sit_duration = float(rospy.get_param("~sit_duration", 2.0))
         self.button_pulse_duration = float(rospy.get_param("~button_pulse_duration", 0.18))
         self.default_steps = int(rospy.get_param("~default_steps", 1))
@@ -76,7 +77,7 @@ class VoiceCommandJoyBridge(object):
         if action == "move":
             self.run_move(direction, self.get_steps(command))
         elif action == "turn":
-            self.run_turn(direction, raw_text)
+            self.run_turn(direction, raw_text, self.get_degrees(command))
         elif action == "sit":
             self.run_sit()
         elif action == "stand":
@@ -111,20 +112,23 @@ class VoiceCommandJoyBridge(object):
         if self.speak_ack:
             self.pub_tts.publish("Done.")
 
-    def run_turn(self, direction, raw_text):
+    def run_turn(self, direction, raw_text, degrees):
         axes = self.neutral_axes()
+        duration = self.turn_duration
         if direction == "right":
             axes[3] = -self.turn_axis_value
-            duration = self.turn_duration
         elif direction == "left":
             axes[3] = self.turn_axis_value
-            duration = self.turn_duration
         elif "around" in raw_text.lower():
             axes[3] = self.turn_axis_value
-            duration = self.turn_around_duration
+            degrees = degrees or 180
         else:
             axes[3] = self.turn_axis_value
-            duration = self.turn_duration
+
+        if degrees:
+            duration = max(0.1, (float(degrees) / 90.0) * self.seconds_per_90_degrees)
+        elif "around" in raw_text.lower():
+            duration = self.turn_around_duration
 
         self.ensure_trot()
         self.hold_axes(axes, duration)
@@ -201,6 +205,14 @@ class VoiceCommandJoyBridge(object):
         except (TypeError, ValueError):
             steps = self.default_steps
         return max(1, steps)
+
+    def get_degrees(self, command):
+        degrees = command.get("degrees")
+        try:
+            degrees = int(degrees)
+        except (TypeError, ValueError):
+            return None
+        return max(1, min(360, degrees))
 
     def neutral_axes(self):
         return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]

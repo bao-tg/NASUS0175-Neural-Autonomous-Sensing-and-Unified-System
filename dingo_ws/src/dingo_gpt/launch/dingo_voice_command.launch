@@ -9,11 +9,12 @@
   <arg name="wake_phrase" default="hey robot"/>
   <arg name="wake_engine" default="cloud"/>
   <arg name="stt_model" default="gpt-4o-transcribe"/>
-  <arg name="command_start_delay" default="2.4"/>
+  <arg name="command_start_delay" default="0.8"/>
 
   <arg name="step_duration" default="0.35"/>
   <arg name="linear_axis_value" default="0.5"/>
   <arg name="turn_axis_value" default="0.5"/>
+  <arg name="seconds_per_90_degrees" default="3.0"/>
 
   <include file="$(find dingo)/launch/dingo.launch">
     <arg name="is_sim" value="$(arg is_sim)"/>
@@ -37,5 +38,6 @@
     <param name="step_duration" value="$(arg step_duration)"/>
     <param name="linear_axis_value" value="$(arg linear_axis_value)"/>
     <param name="turn_axis_value" value="$(arg turn_axis_value)"/>
+    <param name="seconds_per_90_degrees" value="$(arg seconds_per_90_degrees)"/>
   </node>
 </launch>

@@ -1,0 +1,27 @@
+• Implemented the non-Picovoice changes.
+
+  - dingo_ws/src/dingo_gpt/scripts/intent_llm_node.py:52 now emits a degrees
+    field for turn commands, including numeric and word forms like 90 degrees,
+    forty five degrees, and turn around as 180.
+  - dingo_ws/src/dingo_gpt/scripts/voice_command_joy_bridge.py:21 maps degrees
+    to slow turn duration using seconds_per_90_degrees, defaulting to 3.0, so 45
+    is 1.5s, 90 is 3s, and 180 is 6s.
+  - dingo_ws/src/dingo_gpt/launch/dingo_voice_command.launch:12 and dingo_ws/
+    src/dingo_gpt/launch/dingo_voice.launch:7 reduce command_start_delay from
+    2.4 to 0.8 while keeping gpt-4o-transcribe.
+
+  Verified with Python syntax checks, launch XML parsing, and parser smoke tests
+  for:
+  Turn left 90 degrees, Turn right forty five degrees, Turn 90 degrees left, and
+  Turn around.
+
+  Run after rebuild:
+
+  cd /dingo_ws
+  catkin_make
+  source devel/setup.bash
+  roslaunch dingo_gpt dingo_voice_command.launch audio_device:=plughw:2,0
+  playback_device:=plughw:2,0
+
+  Tune turn speed safely with seconds_per_90_degrees:=4.0 if 3.0 is still too
+  aggressive.

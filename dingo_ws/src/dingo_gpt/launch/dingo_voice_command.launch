@@ -9,7 +9,9 @@
   <arg name="wake_phrase" default="hey robot"/>
   <arg name="wake_engine" default="cloud"/>
   <arg name="stt_model" default="gpt-4o-transcribe"/>
-  <arg name="command_start_delay" default="0.8"/>
+  <arg name="command_start_delay" default="0.15"/>
+  <arg name="wake_feedback_mode" default="beep"/>
+  <arg name="beep_duration" default="0.16"/>
 
   <arg name="step_duration" default="0.35"/>
   <arg name="linear_axis_value" default="0.5"/>
@@ -32,6 +34,8 @@
     <arg name="wake_engine" value="$(arg wake_engine)"/>
     <arg name="stt_model" value="$(arg stt_model)"/>
     <arg name="command_start_delay" value="$(arg command_start_delay)"/>
+    <arg name="wake_feedback_mode" value="$(arg wake_feedback_mode)"/>
+    <arg name="beep_duration" value="$(arg beep_duration)"/>
   </include>
 
   <node pkg="dingo_gpt" type="voice_command_joy_bridge.py" name="voice_command_joy_bridge" output="screen">

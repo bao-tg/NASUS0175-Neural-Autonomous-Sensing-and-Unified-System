@@ -4,7 +4,9 @@
   <arg name="wake_phrase" default="hey robot"/>
   <arg name="wake_engine" default="cloud"/>
   <arg name="stt_model" default="gpt-4o-transcribe"/>
-  <arg name="command_start_delay" default="0.8"/>
+  <arg name="command_start_delay" default="0.15"/>
+  <arg name="wake_feedback_mode" default="beep"/>
+  <arg name="beep_duration" default="0.16"/>
   <arg name="camera_source" default="csi"/>
   <arg name="camera_device" default="/dev/video0"/>
 
@@ -31,5 +33,8 @@
     <param name="wake_engine" value="$(arg wake_engine)"/>
     <param name="stt_model" value="$(arg stt_model)"/>
     <param name="command_start_delay" value="$(arg command_start_delay)"/>
+    <param name="playback_device" value="$(arg playback_device)"/>
+    <param name="wake_feedback_mode" value="$(arg wake_feedback_mode)"/>
+    <param name="beep_duration" value="$(arg beep_duration)"/>
   </node>
 </launch>

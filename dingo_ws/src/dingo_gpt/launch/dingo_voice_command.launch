@@ -12,6 +12,10 @@
   <arg name="command_start_delay" default="0.15"/>
   <arg name="wake_feedback_mode" default="beep"/>
   <arg name="beep_duration" default="0.16"/>
+  <arg name="camera_source" default="http"/>
+  <arg name="camera_device" default="/dev/video0"/>
+  <arg name="capture_url" default="http://127.0.0.1:8081/capture.jpg"/>
+  <arg name="keep_debug_image" default="true"/>
 
   <arg name="step_duration" default="0.35"/>
   <arg name="linear_axis_value" default="0.5"/>
@@ -36,6 +40,10 @@
     <arg name="command_start_delay" value="$(arg command_start_delay)"/>
     <arg name="wake_feedback_mode" value="$(arg wake_feedback_mode)"/>
     <arg name="beep_duration" value="$(arg beep_duration)"/>
+    <arg name="camera_source" value="$(arg camera_source)"/>
+    <arg name="camera_device" value="$(arg camera_device)"/>
+    <arg name="capture_url" value="$(arg capture_url)"/>
+    <arg name="keep_debug_image" value="$(arg keep_debug_image)"/>
   </include>
 
   <node pkg="dingo_gpt" type="voice_command_joy_bridge.py" name="voice_command_joy_bridge" output="screen">

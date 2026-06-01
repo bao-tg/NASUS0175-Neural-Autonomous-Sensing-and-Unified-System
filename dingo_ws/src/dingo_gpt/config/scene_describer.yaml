@@ -1,0 +1,5 @@
+camera_source: http
+capture_url: http://127.0.0.1:8081/capture.jpg
+capture_timeout: 5.0
+keep_debug_image: true
+model: gpt-4o-mini

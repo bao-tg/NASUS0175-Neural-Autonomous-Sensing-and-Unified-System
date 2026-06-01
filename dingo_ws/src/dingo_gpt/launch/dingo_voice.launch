@@ -7,8 +7,10 @@
   <arg name="command_start_delay" default="0.15"/>
   <arg name="wake_feedback_mode" default="beep"/>
   <arg name="beep_duration" default="0.16"/>
-  <arg name="camera_source" default="csi"/>
+  <arg name="camera_source" default="http"/>
   <arg name="camera_device" default="/dev/video0"/>
+  <arg name="capture_url" default="http://127.0.0.1:8081/capture.jpg"/>
+  <arg name="keep_debug_image" default="true"/>
 
   <node pkg="dingo_gpt" type="tts_node.py" name="tts_node" output="screen">
     <param name="playback_device" value="$(arg playback_device)"/>
@@ -25,6 +27,8 @@
   <node pkg="dingo_gpt" type="scene_describer_node.py" name="scene_describer_node" output="screen">
     <param name="camera_source" value="$(arg camera_source)"/>
     <param name="camera_device" value="$(arg camera_device)"/>
+    <param name="capture_url" value="$(arg capture_url)"/>
+    <param name="keep_debug_image" value="$(arg keep_debug_image)"/>
   </node>
 
   <node pkg="dingo_gpt" type="wakeup_and_record_node.py" name="wakeup_and_record_node" output="screen">

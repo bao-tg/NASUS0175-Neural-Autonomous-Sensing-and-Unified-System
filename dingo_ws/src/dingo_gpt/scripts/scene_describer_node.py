@@ -3,6 +3,8 @@
 import os
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
@@ -21,10 +23,14 @@ class SceneDescriberNode(object):
         self.display_height = int(rospy.get_param("~display_height", 360))
         self.framerate = int(rospy.get_param("~framerate", 30))
         self.flip_method = int(rospy.get_param("~flip_method", 0))
-        self.camera_source = rospy.get_param("~camera_source", "csi").lower()
+        self.camera_source = rospy.get_param("~camera_source", "http").lower()
         self.camera_device = rospy.get_param("~camera_device", "/dev/video0")
+        self.capture_url = rospy.get_param("~capture_url", "http://127.0.0.1:8081/capture.jpg")
+        self.capture_timeout = float(rospy.get_param("~capture_timeout", 5.0))
+        self.keep_debug_image = rospy.get_param("~keep_debug_image", True)
         self.pub_tts = rospy.Publisher("/tts_input", String, queue_size=10)
         self.pub_description = rospy.Publisher("/scene_description", String, queue_size=10)
+        self.pub_image_path = rospy.Publisher("/scene_image_path", String, queue_size=10)
         rospy.Subscriber("/scene_describe_request", String, self.describe_callback, queue_size=1)
 
     def describe_callback(self, msg):
@@ -32,6 +38,8 @@ class SceneDescriberNode(object):
         image_path = None
         try:
             image_path = self.capture_frame()
+            rospy.loginfo("Scene: captured image: %s", image_path)
+            self.pub_image_path.publish(image_path)
             description = self.describe_image(image_path)
             rospy.loginfo("Scene: %s", description)
             self.pub_description.publish(description)
@@ -40,18 +48,38 @@ class SceneDescriberNode(object):
             rospy.logerr("Scene: failed: %s", exc)
             self.pub_tts.publish("I could not capture or describe the camera image.")
         finally:
-            if image_path:
+            if image_path and not self.keep_debug_image:
                 try:
                     os.remove(image_path)
                 except OSError:
                     pass
 
     def capture_frame(self):
+        if self.camera_source == "http":
+            return self.capture_http_frame()
         if self.camera_source == "csi":
             return self.capture_csi_frame()
         if self.camera_source == "v4l2":
             return self.capture_v4l2_frame()
-        raise RuntimeError("unsupported camera_source %r; use csi or v4l2" % self.camera_source)
+        raise RuntimeError("unsupported camera_source %r; use http, csi, or v4l2" % self.camera_source)
+
+    def capture_http_frame(self):
+        fd, path = tempfile.mkstemp(prefix="dingo_scene_", suffix=".jpg")
+        os.close(fd)
+        try:
+            with urllib.request.urlopen(self.capture_url, timeout=self.capture_timeout) as response:
+                content_type = response.headers.get("Content-Type", "")
+                image_data = response.read()
+        except urllib.error.URLError as exc:
+            raise RuntimeError("could not fetch camera image from %s: %s" % (self.capture_url, exc))
+
+        if not image_data:
+            raise RuntimeError("camera service returned an empty image")
+        if content_type and "image" not in content_type:
+            rospy.logwarn("Scene: camera service returned Content-Type %s", content_type)
+        with open(path, "wb") as image_file:
+            image_file.write(image_data)
+        return path
 
     def capture_csi_frame(self):
         import cv2

@@ -1,0 +1,9 @@
+host: 127.0.0.1
+port: 8081
+capture_width: 1280
+capture_height: 720
+display_width: 640
+display_height: 360
+framerate: 30
+flip_method: 0
+jpeg_quality: 85

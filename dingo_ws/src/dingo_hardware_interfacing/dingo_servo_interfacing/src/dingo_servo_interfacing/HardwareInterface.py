@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import os
 from adafruit_servokit import ServoKit
+from adafruit_extended_bus import ExtendedI2C as I2C
 import numpy as np
 import math as m
 import rospy
@@ -10,7 +12,10 @@ class HardwareInterface():
         self.pwm_min = 500
         self.link = link
         self.servo_angles = np.zeros((3,4))
-        self.kit = ServoKit(channels=16) #Defininng a new set of servos uising the Adafruit ServoKit LIbrary
+        self.i2c_bus = int(os.environ.get("DINGO_I2C_BUS", "1"))
+        self.i2c_address = int(os.environ.get("DINGO_SERVO_ADDRESS", "0x40"), 0)
+        self.i2c = I2C(self.i2c_bus)
+        self.kit = ServoKit(channels=16, i2c=self.i2c, address=self.i2c_address) #Defininng a new set of servos uising the Adafruit ServoKit LIbrary
         
         """ SERVO INDICES, CALIBRATION MULTIPLIERS AND OFFSETS
             #   ROW:    which joint of leg to control 0:hip, 1: upper leg, 2: lower leg

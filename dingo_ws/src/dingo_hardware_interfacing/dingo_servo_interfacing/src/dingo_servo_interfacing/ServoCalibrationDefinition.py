@@ -1,4 +1,6 @@
+import os
 from adafruit_servokit import ServoKit
+from adafruit_extended_bus import ExtendedI2C as I2C
 # from leg_config import *
 import numpy as np
 import math as m
@@ -8,7 +10,10 @@ class motor_config():
     def __init__(self):
         self.pwm_max = 2700
         self.pwm_min = 500
-        self.kit = ServoKit(channels=16) #Defininng a new set of servos uising the Adafruit ServoKit LIbrary
+        self.i2c_bus = int(os.environ.get("DINGO_I2C_BUS", "1"))
+        self.i2c_address = int(os.environ.get("DINGO_SERVO_ADDRESS", "0x40"), 0)
+        self.i2c = I2C(self.i2c_bus)
+        self.kit = ServoKit(channels=16, i2c=self.i2c, address=self.i2c_address) #Defininng a new set of servos uising the Adafruit ServoKit LIbrary
         
         #DefinING servo indices
         ## FRONT LEFT

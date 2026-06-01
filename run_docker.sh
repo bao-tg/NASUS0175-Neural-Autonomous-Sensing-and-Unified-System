@@ -31,8 +31,12 @@ sudo docker run -it \
     --name "$CONTAINER_NAME" \
     --net=host \
     --privileged \
+    --device /dev/i2c-1:/dev/i2c-1 \
     --device /dev/snd:/dev/snd \
     --group-add audio \
+    --env="BLINKA_JETSON_NANO=1" \
+    --env="DINGO_I2C_BUS=1" \
+    --env="DINGO_SERVO_ADDRESS=0x40" \
     --env="DISPLAY=$DISPLAY" \
     --env="QT_X11_NO_MITSHM=1" \
     --env="XAUTHORITY=$XAUTH" \

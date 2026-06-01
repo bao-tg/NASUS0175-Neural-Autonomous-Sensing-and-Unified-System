@@ -6,6 +6,10 @@ services:
     image: dingo_ws
     network_mode: "host"
     privileged: true
+    environment:
+      BLINKA_JETSON_NANO: "1"
+      DINGO_I2C_BUS: "1"
+      DINGO_SERVO_ADDRESS: "0x40"
     cap_add:
       - SYS_PTRACE
     security_opt:
@@ -15,6 +19,7 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     devices:
+      - /dev/i2c-1:/dev/i2c-1
       - /dev:/dev
     build:
       context: .

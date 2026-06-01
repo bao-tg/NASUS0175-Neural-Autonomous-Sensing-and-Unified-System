@@ -48,10 +48,11 @@ RUN pip3 install \
     matplotlib \
     pynput \
     spidev \
+    adafruit-extended-bus \
     adafruit-circuitpython-servokit \
     adafruit-circuitpython-bno055 \
     Jetson.GPIO \
-    openai==0.28 \
+    openai==0.28
 
 # Make the prompt a little nicer
 RUN echo "PS1='${debian_chroot:+($debian_chroot)}\u@:\w\$ '" >> /etc/bash.bashrc 

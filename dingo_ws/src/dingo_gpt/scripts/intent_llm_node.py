@@ -182,23 +182,18 @@ class IntentLLMNode(object):
         return current
 
     def extract_steps(self, lower):
-        words = {
-            "one": 1,
-            "two": 2,
-            "three": 3,
-            "four": 4,
-            "five": 5,
-            "six": 6,
-            "seven": 7,
-            "eight": 8,
-            "nine": 9,
-            "ten": 10,
-        }
+        range_match = re.search(r"\b(\d+)\s*(?:-|to)\s*(\d+)\s+(step|steps)\b", lower)
+        if range_match:
+            return int(range_match.group(2))
+
         match = re.search(r"\b(\d+)\s+(step|steps)\b", lower)
         if match:
             return int(match.group(1))
-        for word, value in words.items():
-            if re.search(r"\b%s\s+(step|steps)\b" % word, lower):
+
+        word_match = re.search(r"\b([a-z][a-z -]*?)\s+(step|steps)\b", lower)
+        if word_match:
+            value = self.words_to_number(word_match.group(1).replace("-", " ").split())
+            if value is not None:
                 return value
         return None
 

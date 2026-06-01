@@ -25,6 +25,8 @@ class VoiceCommandJoyBridge(object):
         self.sit_duration = float(rospy.get_param("~sit_duration", 2.0))
         self.button_pulse_duration = float(rospy.get_param("~button_pulse_duration", 0.18))
         self.default_steps = int(rospy.get_param("~default_steps", 1))
+        self.max_steps = int(rospy.get_param("~max_steps", 30))
+        self.step_limit_message = "Don't try to move over 30 steps to prevent user input the edge case"
         self.speak_ack = rospy.get_param("~speak_ack", True)
 
         self.pub_joy = rospy.Publisher("joy", Joy, queue_size=10)
@@ -90,6 +92,12 @@ class VoiceCommandJoyBridge(object):
                 self.pub_tts.publish("I heard the command, but I cannot map it to motion yet.")
 
     def run_move(self, direction, steps):
+        if steps > self.max_steps:
+            rospy.logwarn("Voice bridge: rejecting move command with %s steps; max is %s", steps, self.max_steps)
+            if self.speak_ack:
+                self.pub_tts.publish(self.step_limit_message)
+            return
+
         if direction not in ["forward", "backward", "left", "right"]:
             rospy.logwarn("Voice bridge: move command missing direction")
             return

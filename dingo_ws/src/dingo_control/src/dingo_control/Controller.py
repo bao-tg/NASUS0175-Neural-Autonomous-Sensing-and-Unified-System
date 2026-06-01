@@ -38,7 +38,7 @@ class Controller:
         self.swing_controller = SwingController(self.config)
         self.stance_controller = StanceController(self.config)
 
-        self.hop_transition_mapping = {BehaviorState.REST: BehaviorState.HOP, BehaviorState.HOP: BehaviorState.FINISHHOP, BehaviorState.FINISHHOP: BehaviorState.REST, BehaviorState.TROT: BehaviorState.HOP}
+        self.hop_transition_mapping = {BehaviorState.REST: BehaviorState.HOP, BehaviorState.HOP: BehaviorState.FINISHHOP, BehaviorState.FINISHHOP: BehaviorState.REST, BehaviorState.TROT: BehaviorState.REST}
         self.trot_transition_mapping = {BehaviorState.REST: BehaviorState.TROT, BehaviorState.TROT: BehaviorState.REST, BehaviorState.HOP: BehaviorState.TROT, BehaviorState.FINISHHOP: BehaviorState.TROT}
         self.activate_transition_mapping = {BehaviorState.DEACTIVATED: BehaviorState.REST, BehaviorState.REST: BehaviorState.DEACTIVATED}
 
@@ -159,7 +159,7 @@ class Controller:
             # Set the foot locations to the default stance plus the standard height
             state.foot_locations = (
                 self.config.default_stance
-                + np.array([0, 0, command.height])[:, np.newaxis]
+                + np.array([command.x_shift, command.y_shift, command.height])[:, np.newaxis]
             )
             # Apply the desired body rotation
             rotated_foot_locations = (

@@ -197,12 +197,12 @@ class SimulationConfig:
 # Leg Linkage for the purpose of hardware interfacing
 class Leg_linkage:
     def __init__(self,configuration):
-        self.a = 35.12 #mm
-        self.b = 37.6 #mm
+        self.a = 25 #mm
+        self.b = 40 #mm
         self.c = 43 #mm
         self.d = 35.23  #mm
         self.e = 67.1 #mm
-        self.f = 130 #mm  #new will be 130.0
+        self.f = 133 #mm  #new will be 130.0
         self.g = 37 #mm
         self.h = 43 #mm
         self.upper_leg_length = configuration.L2*1000

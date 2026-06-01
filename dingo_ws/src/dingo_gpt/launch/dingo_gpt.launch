@@ -1,3 +1,0 @@
-<launch>
-  <node pkg="dingo_gpt" type="rosgpt_node.py" name="rosgpt_node" output="screen"/>
-</launch> 

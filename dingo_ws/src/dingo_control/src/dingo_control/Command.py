@@ -20,3 +20,5 @@ class Command:
         self.hop_event = False
         self.trot_event = False
         self.joystick_control_event = False
+        self.x_shift = 0.0
+        self.y_shift = 0.0

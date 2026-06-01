@@ -106,7 +106,10 @@ if len(sys.argv) > 1 and sys.argv[1] in servo_dict:
         print('DINGO: Motors Relaxed.\n')
 
 # Dingo.calibrate_servo(Dingo.front_left_upper)
+
+print("chiiiiiiiiii")
 if servo_name == "fr" or servo_name == "all":
+    print("chiiiiiii2")
     Dingo.moveAbsAngle(Dingo.front_right_hip  ,offsets[0,0]+pos[0])
     Dingo.moveAbsAngle(Dingo.front_right_upper,offsets[1,0]+pos[1])
     Dingo.moveAbsAngle(Dingo.front_right_lower,offsets[2,0]+pos[2])

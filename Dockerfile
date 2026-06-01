@@ -10,16 +10,13 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     gdb \
     apt-utils \
-    alsa-utils \
     python3-rosdep \
     python3-pip \
-    python3-opencv \
     python3-vcstool \
     python3-pymodbus \
     build-essential \
     ros-noetic-catkin \
     python3-catkin-tools \
-    ros-noetic-audio-common \
     ros-noetic-ros-controllers \
     nano \
     ros-noetic-soem \
@@ -37,8 +34,6 @@ RUN apt-get update && apt-get install -y i2c-tools && \
     usermod -aG ros root && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip3 uninstall -y serial 2>/dev/null || true
-
 RUN pip3 install \
     transforms3d \
     UDPComms \
@@ -49,9 +44,7 @@ RUN pip3 install \
     pynput \
     spidev \
     adafruit-circuitpython-servokit \
-    adafruit-circuitpython-bno055 \
-    Jetson.GPIO \
-    openai==0.28 \
+    adafruit-circuitpython-bno055
 
 # Make the prompt a little nicer
 RUN echo "PS1='${debian_chroot:+($debian_chroot)}\u@:\w\$ '" >> /etc/bash.bashrc 

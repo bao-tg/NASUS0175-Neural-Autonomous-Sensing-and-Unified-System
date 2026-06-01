@@ -25,39 +25,19 @@ fi
 touch "$XAUTH"
 chmod 777 "$XAUTH"
 
-# # The Run Command
+# The Run Command
 sudo docker run -it \
-    --runtime nvidia \
+    --rm \
     --name "$CONTAINER_NAME" \
     --net=host \
     --privileged \
-    --device /dev/snd:/dev/snd \
-    --group-add audio \
     --env="DISPLAY=$DISPLAY" \
     --env="QT_X11_NO_MITSHM=1" \
     --env="XAUTHORITY=$XAUTH" \
     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-    --volume="/tmp/argus_socket:/tmp/argus_socket" \
     --volume="$XAUTH:$XAUTH:rw" \
     --volume="$HOST_DIR/src:$CONTAINER_DIR/src" \
     --volume="$SCRIPT_DIR/ros_entrypoint.sh:/ros_entrypoint.sh:ro" \
     --entrypoint "/ros_entrypoint.sh" \
     "$IMAGE_NAME" \
     /bin/bash
-# sudo docker run -it \
-#     --rm \
-#     --name "$CONTAINER_NAME" \
-#     --net=host \
-#     --privileged \
-#     --device /dev/snd:/dev/snd \
-#     --group-add audio \
-#     --env="DISPLAY=$DISPLAY" \
-#     --env="QT_X11_NO_MITSHM=1" \
-#     --env="XAUTHORITY=$XAUTH" \
-#     --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-#     --volume="$XAUTH:$XAUTH:rw" \
-#     --volume="$HOST_DIR/src:$CONTAINER_DIR/src" \
-#     --volume="$SCRIPT_DIR/ros_entrypoint.sh:/ros_entrypoint.sh:ro" \
-#     --entrypoint "/ros_entrypoint.sh" \
-#     "$IMAGE_NAME" \
-#     /bin/bash

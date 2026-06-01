@@ -4,7 +4,7 @@ import numpy as np
 import time
 import time
 import board
-# import adafruit_bno055
+import adafruit_bno055
 import math as m
 
 class IMU:

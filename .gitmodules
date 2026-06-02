@@ -1,0 +1,4 @@
+[submodule "dingo_ws/src/dingo_AI/gscam"]
+	path = dingo_ws/src/dingo_AI/gscam
+	url = https://github.com/NguyenHuuChi/gscam.git
+	branch = Chi

@@ -17,13 +17,19 @@ if [ -x "$(command -v xhost)" ]; then
     xhost +local:docker > /dev/null
 fi
 
-# Prepare Xauthority for sharing with container
-XAUTH=/tmp/.docker.xauth
+# Prepare Xauthority for sharing with container.
+# Use a per-user file so a stale root-owned /tmp/.docker.xauth cannot block startup.
+XAUTH="/tmp/.docker.xauth.${UID}"
+if [ -e "$XAUTH" ] && { [ ! -f "$XAUTH" ] || [ ! -w "$XAUTH" ]; }; then
+    echo "Warning: $XAUTH is not a writable file; using a temporary Xauthority file instead."
+    XAUTH="$(mktemp "/tmp/.docker.xauth.${UID}.XXXXXX")"
+fi
 if [ -f "$HOME/.Xauthority" ]; then
     cp "$HOME/.Xauthority" "$XAUTH"
+else
+    touch "$XAUTH"
 fi
-touch "$XAUTH"
-chmod 777 "$XAUTH"
+chmod 600 "$XAUTH"
 
 # # The Run Command
 sudo docker run -it \

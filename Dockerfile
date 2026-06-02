@@ -19,8 +19,8 @@ RUN apt-get update && \
     build-essential \
     ros-noetic-catkin \
     python3-catkin-tools \
-    ros-noetic-audio-common \
     ros-noetic-ros-controllers \
+    ros-noetic-plotjuggler-ros \
     nano \
     ros-noetic-soem \
     libvlccore-dev \
@@ -51,7 +51,7 @@ RUN pip3 install \
     adafruit-circuitpython-servokit \
     adafruit-circuitpython-bno055 \
     Jetson.GPIO \
-    openai==0.28 \
+    openai==0.28 
 
 # Make the prompt a little nicer
 RUN echo "PS1='${debian_chroot:+($debian_chroot)}\u@:\w\$ '" >> /etc/bash.bashrc 

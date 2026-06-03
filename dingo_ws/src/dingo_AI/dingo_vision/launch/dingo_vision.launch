@@ -25,16 +25,16 @@
 
     <arg name="use_follow" default="1"/>
     <arg name="follow_lock_delay" default="10.0"/>
-    <arg name="follow_command_rate" default="1.0"/>
+    <arg name="follow_command_rate" default="2.0"/>
     <arg name="follow_center_deadband_ratio" default="0.15"/>
     <arg name="follow_distance_deadband_ratio" default="0.12"/>
     <arg name="follow_yaw_gain" default="0.55"/>
-    <arg name="follow_max_yaw_cmd" default="0.35"/>
+    <arg name="follow_max_yaw_cmd" default="1.5"/>
     <arg name="follow_area_gain" default="4.0"/>
     <arg name="follow_target_height_ratio" default="0.8"/>
-    <arg name="follow_target_area_ratio" default="0.25"/>
+    <arg name="follow_target_area_ratio" default="0.4"/>
     <arg name="follow_step_scale" default="10.0"/>
-    <arg name="follow_max_steps" default="2"/>
+    <arg name="follow_max_steps" default="50"/>
     <arg name="follow_min_command_interval" default="1.0"/>
     <arg name="follow_smooth_alpha" default="0.35"/>
     <arg name="follow_enable_appearance_reacquire" default="1"/>
@@ -47,7 +47,7 @@
     <arg name="follow_yaw_duration" default="0.45"/>
     <arg name="follow_button_pulse_duration" default="0.18"/>
     <arg name="follow_yaw_axis_sign" default="-1.0"/>
-    <arg name="follow_yaw_axis_scale" default="4.5"/>
+    <arg name="follow_yaw_axis_scale" default="5"/>
     <arg name="follow_return_to_rest_after_command" default="1"/>
     <arg name="follow_publish_debug_info" default="0"/>
 

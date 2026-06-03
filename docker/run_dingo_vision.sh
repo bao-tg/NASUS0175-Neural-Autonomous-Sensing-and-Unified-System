@@ -25,18 +25,33 @@ else
     CONTAINER_CMD=("$@")
 fi
 
-export DISPLAY=${DISPLAY:-:0}
+DOCKER_X11_ARGS=()
+if [ -n "${DISPLAY:-}" ] && [ -d /tmp/.X11-unix ]; then
+    if command -v xhost >/dev/null 2>&1; then
+        xhost +SI:localuser:root >/dev/null 2>&1 || \
+            echo "Warning: could not authorize root for X11; GUI windows may not open." >&2
+    fi
 
-if [ -x "$(command -v xhost)" ]; then
-    xhost +local:docker > /dev/null
+    XAUTH=/tmp/.docker.xauth
+    XAUTH_SOURCE="${XAUTHORITY:-$HOME/.Xauthority}"
+    if [ -f "$XAUTH_SOURCE" ]; then
+        cp "$XAUTH_SOURCE" "$XAUTH"
+    else
+        touch "$XAUTH"
+    fi
+    chmod 600 "$XAUTH"
+
+    DOCKER_X11_ARGS+=(
+        --env="DISPLAY=$DISPLAY"
+        --env="QT_X11_NO_MITSHM=1"
+        --env="XAUTHORITY=$XAUTH"
+        --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw"
+        --volume="$XAUTH:$XAUTH:rw"
+    )
+else
+    echo "DISPLAY is not set; running container without X11 GUI forwarding." >&2
 fi
 
-XAUTH=/tmp/.docker.xauth
-if [ -f "$HOME/.Xauthority" ]; then
-    cp "$HOME/.Xauthority" "$XAUTH"
-fi
-touch "$XAUTH"
-chmod 777 "$XAUTH"
 mkdir -p "$HOST_DIR/build" "$HOST_DIR/devel"
 mkdir -p "$HOST_YOLO_MODELS_DIR"
 
@@ -46,17 +61,13 @@ sudo docker run -it \
     --net=host \
     --pid=host \
     --privileged \
-    --env="DISPLAY=$DISPLAY" \
-    --env="QT_X11_NO_MITSHM=1" \
-    --env="XAUTHORITY=$XAUTH" \
+    "${DOCKER_X11_ARGS[@]}" \
     --env="OPENBLAS_CORETYPE=ARMV8" \
     --env="BLINKA_JETSON_NANO=1" \
     --env="LD_LIBRARY_PATH=$HOST_TEGRA_EGL_DIR:$HOST_TEGRA_LIB_DIR:${LD_LIBRARY_PATH:-}" \
     --env="__EGL_VENDOR_LIBRARY_FILENAMES=$HOST_TEGRA_EGL_DIR/nvidia.json" \
     --env="GST_PLUGIN_PATH=$CONTAINER_NVIDIA_GST_PLUGIN_DIR:${GST_PLUGIN_PATH:-}" \
     --env="GST_REGISTRY=/tmp/gst-registry-dingo-vision.bin" \
-    --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
-    --volume="$XAUTH:$XAUTH:rw" \
     --volume="/tmp/argus_socket:/tmp/argus_socket" \
     --volume="$HOST_TEGRA_LIB_DIR:$HOST_TEGRA_LIB_DIR:ro" \
     --volume="$HOST_TEGRA_EGL_DIR:$HOST_TEGRA_EGL_DIR:ro" \

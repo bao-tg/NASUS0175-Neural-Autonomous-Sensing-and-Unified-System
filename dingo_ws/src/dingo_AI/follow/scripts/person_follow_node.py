@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import math
 import threading
 import time
@@ -9,8 +10,8 @@ import cv2
 import numpy as np
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import Image
-from std_msgs.msg import Float32MultiArray, Float64, Int32, String
+from sensor_msgs.msg import Image, Joy
+from std_msgs.msg import Float32MultiArray, String
 
 
 @dataclass
@@ -67,6 +68,16 @@ class PersonFollowNode:
         self.min_track_score = float(rospy.get_param("~min_track_score", 0.25))
         self.person_class = int(rospy.get_param("~person_class", 0))
         self.publish_zero_yaw = bool(rospy.get_param("~publish_zero_yaw", False))
+        self.publish_debug_info = bool(rospy.get_param("~publish_debug_info", False))
+
+        self.joy_topic = rospy.get_param("~joy_topic", "joy")
+        self.joy_rate_hz = float(rospy.get_param("~joy_rate_hz", 30.0))
+        self.linear_axis_value = float(rospy.get_param("~linear_axis_value", 0.5))
+        self.step_duration = float(rospy.get_param("~step_duration", 0.35))
+        self.yaw_duration = float(rospy.get_param("~yaw_duration", 0.45))
+        self.button_pulse_duration = float(rospy.get_param("~button_pulse_duration", 0.18))
+        self.yaw_axis_sign = float(rospy.get_param("~yaw_axis_sign", -1.0))
+        self.return_to_rest_after_command = bool(rospy.get_param("~return_to_rest_after_command", True))
 
         self.enable_appearance_reacquire = bool(rospy.get_param("~enable_appearance_reacquire", True))
         self.appearance_match_threshold = float(rospy.get_param("~appearance_match_threshold", 0.55))
@@ -83,6 +94,9 @@ class PersonFollowNode:
         self.last_command_time = 0.0
         self.smoothed_yaw = 0.0
         self.state = "waiting_to_lock"
+        self.command_lock = threading.Lock()
+        self.command_busy = False
+        self.in_trot = False
 
         self.bridge = CvBridge()
         self.lock = threading.Lock()
@@ -91,10 +105,10 @@ class PersonFollowNode:
         self.target_hist: Optional[np.ndarray] = None
         self.last_hist_score: Optional[float] = None
 
-        self.yaw_pub = rospy.Publisher("/cmd_yaw", Float64, queue_size=1)
-        self.steps_pub = rospy.Publisher("/cmd_steps", Int32, queue_size=1)
+        self.joy_pub = rospy.Publisher(self.joy_topic, Joy, queue_size=10)
         self.target_bbox_pub = rospy.Publisher("~target_bbox", Float32MultiArray, queue_size=1)
         self.status_pub = rospy.Publisher("~status", String, queue_size=1)
+        self.debug_info_pub = rospy.Publisher("~debug_info", String, queue_size=1) if self.publish_debug_info else None
         self.sub = rospy.Subscriber(self.tracks_topic, Float32MultiArray, self.tracks_callback, queue_size=1)
         self.timer = rospy.Timer(rospy.Duration(1.0 / max(self.command_rate, 0.1)), self.control_tick)
         rospy.loginfo(
@@ -323,6 +337,104 @@ class PersonFollowNode:
             msg.data = [1.0, track.x1, track.y1, track.width, track.height]
         self.target_bbox_pub.publish(msg)
 
+    def publish_debug_command(self, action, track: Optional[Track], center_error_norm=None, yaw_axis=0.0, steps=0, height_ratio=None, distance_error=None):
+        if self.debug_info_pub is None:
+            return
+        payload = {
+            "stamp": rospy.Time.now().to_sec(),
+            "state": self.state,
+            "action": action,
+            "target_id": self.target_id,
+            "center_error_norm": center_error_norm,
+            "smoothed_yaw": self.smoothed_yaw,
+            "yaw_axis": yaw_axis,
+            "steps": int(steps),
+            "height_ratio": height_ratio,
+            "target_height_ratio": self.target_height_ratio,
+            "distance_error": distance_error,
+            "command_busy": self.command_busy,
+            "in_trot": self.in_trot,
+        }
+        if track is None:
+            payload["bbox"] = None
+        else:
+            payload["bbox"] = {
+                "x1": track.x1,
+                "y1": track.y1,
+                "x2": track.x2,
+                "y2": track.y2,
+                "cx": track.cx,
+                "cy": track.cy,
+                "width": track.width,
+                "height": track.height,
+                "area": track.area,
+                "score": track.score,
+                "class": track.cls,
+            }
+        self.debug_info_pub.publish(String(data=json.dumps(payload, sort_keys=True)))
+
+    def neutral_axes(self):
+        return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+    def neutral_buttons(self):
+        return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    def publish_joy(self, axes, buttons):
+        msg = Joy()
+        msg.header.stamp = rospy.Time.now()
+        msg.axes = list(axes)
+        msg.buttons = list(buttons)
+        self.joy_pub.publish(msg)
+
+    def publish_neutral(self):
+        self.publish_joy(self.neutral_axes(), self.neutral_buttons())
+
+    def hold_message(self, axes, buttons, duration):
+        period = 1.0 / max(self.joy_rate_hz, 1.0)
+        end_time = time.time() + max(duration, period)
+        while not rospy.is_shutdown() and time.time() < end_time:
+            self.publish_joy(axes, buttons)
+            time.sleep(period)
+
+    def pulse_button(self, button_index):
+        buttons = self.neutral_buttons()
+        buttons[button_index] = 1
+        self.hold_message(self.neutral_axes(), buttons, self.button_pulse_duration)
+        self.publish_neutral()
+
+    def ensure_trot(self):
+        if not self.in_trot:
+            self.pulse_button(5)
+            self.in_trot = True
+            rospy.sleep(0.15)
+
+    def ensure_rest(self):
+        if self.in_trot:
+            self.pulse_button(5)
+            self.in_trot = False
+            rospy.sleep(0.15)
+
+    def run_joy_command(self, axes, duration):
+        try:
+            self.ensure_trot()
+            self.hold_message(axes, self.neutral_buttons(), duration)
+            self.publish_neutral()
+            if self.return_to_rest_after_command:
+                self.ensure_rest()
+        finally:
+            with self.command_lock:
+                self.command_busy = False
+
+    def start_joy_command(self, axes, duration):
+        with self.command_lock:
+            if self.command_busy:
+                return False
+            self.command_busy = True
+        worker = threading.Thread(target=self.run_joy_command, args=(list(axes), duration))
+        worker.daemon = True
+        worker.start()
+        return True
+
     def control_tick(self, _event):
         self.maybe_lock_target()
         target = self.get_target_track()
@@ -330,12 +442,14 @@ class PersonFollowNode:
 
         if target is None:
             self.status_pub.publish(String(data=self.state))
+            self.publish_debug_command("no_target", None)
             return
 
         now = time.time()
         if now - self.last_command_time < self.min_command_interval:
             hist_text = "" if self.last_hist_score is None else f" hist={self.last_hist_score:.3f}"
             self.status_pub.publish(String(data=f"locked id={self.target_id} holding{hist_text}"))
+            self.publish_debug_command("holding", target)
             return
 
         image_center = 0.5 * self.image_width
@@ -345,15 +459,22 @@ class PersonFollowNode:
             raw_yaw = self.yaw_gain * center_error_norm
             yaw_cmd = max(-self.max_yaw_cmd, min(self.max_yaw_cmd, raw_yaw))
             self.smoothed_yaw = (1.0 - self.smooth_alpha) * self.smoothed_yaw + self.smooth_alpha * yaw_cmd
-            self.yaw_pub.publish(Float64(data=self.smoothed_yaw))
-            self.last_command_time = now
-            self.state = f"turn id={self.target_id} yaw={self.smoothed_yaw:.3f} err={center_error_norm:.3f}"
+            axes = self.neutral_axes()
+            axes[3] = self.yaw_axis_sign * self.smoothed_yaw
+            if self.start_joy_command(axes, self.yaw_duration):
+                self.last_command_time = now
+                self.state = f"turn id={self.target_id} yaw_axis={axes[3]:.3f} err={center_error_norm:.3f}"
+                action = "turn"
+            else:
+                self.state = f"turn_wait id={self.target_id} err={center_error_norm:.3f}"
+                action = "turn_wait"
             self.status_pub.publish(String(data=self.state))
+            self.publish_debug_command(action, target, center_error_norm=center_error_norm, yaw_axis=axes[3])
             return
 
         if self.publish_zero_yaw and abs(self.smoothed_yaw) > 1e-3:
             self.smoothed_yaw = 0.0
-            self.yaw_pub.publish(Float64(data=0.0))
+            self.publish_neutral()
 
         height_ratio = target.height / max(self.image_height, 1.0)
         distance_error = self.target_height_ratio - height_ratio
@@ -361,11 +482,19 @@ class PersonFollowNode:
         if distance_error > self.distance_deadband_ratio:
             steps = int(round(self.area_gain * distance_error))
             steps = max(1, min(self.max_steps, steps))
-            self.steps_pub.publish(Int32(data=steps))
-            self.last_command_time = now
-            self.state = f"forward id={self.target_id} steps={steps} height_ratio={height_ratio:.2f} target={self.target_height_ratio:.2f}"
+            axes = self.neutral_axes()
+            axes[1] = self.linear_axis_value
+            if self.start_joy_command(axes, max(steps, 1) * self.step_duration):
+                self.last_command_time = now
+                self.state = f"forward id={self.target_id} steps={steps} axis={axes[1]:.2f} height_ratio={height_ratio:.2f} target={self.target_height_ratio:.2f}"
+                action = "forward"
+            else:
+                self.state = f"forward_wait id={self.target_id} steps={steps} height_ratio={height_ratio:.2f}"
+                action = "forward_wait"
+            self.publish_debug_command(action, target, center_error_norm=center_error_norm, yaw_axis=0.0, steps=steps, height_ratio=height_ratio, distance_error=distance_error)
         else:
             self.state = f"aligned id={self.target_id} height_ratio={height_ratio:.2f} target={self.target_height_ratio:.2f} center_err={center_error_norm:.3f}"
+            self.publish_debug_command("aligned", target, center_error_norm=center_error_norm, yaw_axis=0.0, steps=0, height_ratio=height_ratio, distance_error=distance_error)
 
         self.status_pub.publish(String(data=self.state))
 

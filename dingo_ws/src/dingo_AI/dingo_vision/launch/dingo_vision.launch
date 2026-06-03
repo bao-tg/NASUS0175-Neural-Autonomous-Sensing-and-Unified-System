@@ -2,7 +2,7 @@
     <arg name="is_sim" default="0"/>
     <arg name="is_physical" default="1"/>
     <arg name="use_joystick" default="0"/>
-    <arg name="use_keyboard" default="1"/>
+    <arg name="use_keyboard" default="0"/>
     <arg name="serial_port" default="/dev/ttyS0"/>
     <arg name="use_imu" default="0"/>
 
@@ -12,7 +12,7 @@
     <arg name="use_camera" default="1"/>
     <arg name="camera_backend" default="gscam_nodelet" doc="python_gst is stable on Jetson; gscam_nodelet keeps the nodelet path available for debugging."/>
     <arg name="use_tracker" default="1"/>
-    <arg name="tracker_method" default="yolo" doc="ML_algos uses the existing OpenCV/optical-flow tracker. yolo uses TensorRT YOLO tracking."/>
+    <arg name="tracker_method" default="yolo_nodelet" doc="ML_algos uses the existing OpenCV/optical-flow tracker. yolo uses TensorRT YOLO tracking. yolo_nodelet loads the TensorRT tracker as a nodelet."/>
     <arg name="tracker_type" default="KCF"/>
     <arg name="tracker_show_window" default="0"/>
     <arg name="tracker_interactive_roi" default="0"/>
@@ -26,12 +26,14 @@
     <arg name="use_follow" default="1"/>
     <arg name="follow_lock_delay" default="10.0"/>
     <arg name="follow_command_rate" default="1.0"/>
-    <arg name="follow_center_deadband_ratio" default="0.08"/>
+    <arg name="follow_center_deadband_ratio" default="0.15"/>
     <arg name="follow_distance_deadband_ratio" default="0.12"/>
     <arg name="follow_yaw_gain" default="0.55"/>
     <arg name="follow_max_yaw_cmd" default="0.35"/>
     <arg name="follow_area_gain" default="4.0"/>
     <arg name="follow_target_height_ratio" default="0.8"/>
+    <arg name="follow_target_area_ratio" default="0.25"/>
+    <arg name="follow_step_scale" default="10.0"/>
     <arg name="follow_max_steps" default="2"/>
     <arg name="follow_min_command_interval" default="1.0"/>
     <arg name="follow_smooth_alpha" default="0.35"/>
@@ -45,6 +47,7 @@
     <arg name="follow_yaw_duration" default="0.45"/>
     <arg name="follow_button_pulse_duration" default="0.18"/>
     <arg name="follow_yaw_axis_sign" default="-1.0"/>
+    <arg name="follow_yaw_axis_scale" default="4.5"/>
     <arg name="follow_return_to_rest_after_command" default="1"/>
     <arg name="follow_publish_debug_info" default="0"/>
 
@@ -58,11 +61,11 @@
     <arg name="yolo_imgsz" default="640"/>
     <arg name="yolo_device" default="0"/>
     <arg name="yolo_half" default="1"/>
-    <arg name="yolo_publish_debug_image" default="1"/>
+    <arg name="yolo_publish_debug_image" default="0"/>
 
     <arg name="camera_width" default="360"/>
     <arg name="camera_height" default="300"/>
-    <arg name="camera_fps" default="5"/>
+    <arg name="camera_fps" default="10"/>
     <arg name="camera_sensor_id" default="0"/>
     <arg name="camera_flip_method" default="0"/>
     <arg name="camera_frame_id" default="gscam_nodelet"/>
@@ -112,7 +115,7 @@
     </group> -->
 
 
-    <group if="$(eval arg('use_tracker') and arg('tracker_method') == 'yolo')">
+    <!-- <group if="$(eval arg('use_tracker') and arg('tracker_method') == 'yolo')">
         <node pkg="yolox" type="yolo_trt_node" name="yolo_tracker" launch-prefix="env LD_LIBRARY_PATH=/host_cuda/targets/aarch64-linux/lib:/host_cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra-egl:/dingo_ws/devel/lib:/opt/ros/noetic/lib:$LD_LIBRARY_PATH taskset -c $(arg vision_cpu)" output="screen">
             <param name="image_topic" value="/camera/image_raw"/>
             <param name="model_path" value="$(arg yolo_model_path)"/>
@@ -129,7 +132,22 @@
             <param name="show_window" type="bool" value="$(arg tracker_show_window)"/>
             <param name="publish_debug_image" type="bool" value="$(arg yolo_publish_debug_image)"/>
         </node>
+    </group> -->
+
+    <group if="$(eval arg('use_tracker') and arg('tracker_method') == 'yolo_nodelet' and arg('camera_backend') == 'gscam_nodelet')">
+        <node pkg="nodelet" type="nodelet" name="yolo_tracker" args="load yolox/YoloTrtNodelet camera_nodelet_manager" launch-prefix="env LD_LIBRARY_PATH=/host_cuda/targets/aarch64-linux/lib:/host_cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra-egl:/dingo_ws/devel/lib:/opt/ros/noetic/lib:$LD_LIBRARY_PATH taskset -c $(arg vision_cpu)" output="screen">
+            <param name="image_topic" value="/camera/image_raw"/>
+            <param name="model_path" value="$(arg yolo_model_path)"/>
+            <param name="tracking_backend" value="$(arg yolo_tracking_backend)"/>
+            <param name="classes" type="int" value="$(arg yolo_classes)"/>
+            <param name="conf" type="double" value="$(arg yolo_conf)"/>
+            <param name="iou" type="double" value="$(arg yolo_iou)"/>
+            <param name="max_width" type="int" value="$(arg tracker_max_width)"/>
+            <param name="publish_debug_image" type="bool" value="$(arg yolo_publish_debug_image)"/>
+        </node>
     </group>
+
+
 
 
     <group if="$(arg use_follow)">
@@ -146,6 +164,8 @@
             <param name="max_yaw_cmd" type="double" value="$(arg follow_max_yaw_cmd)"/>
             <param name="area_gain" type="double" value="$(arg follow_area_gain)"/>
             <param name="target_height_ratio" type="double" value="$(arg follow_target_height_ratio)"/>
+            <param name="target_area_ratio" type="double" value="$(arg follow_target_area_ratio)"/>
+            <param name="step_scale" type="double" value="$(arg follow_step_scale)"/>
             <param name="max_steps" type="int" value="$(arg follow_max_steps)"/>
             <param name="min_command_interval" type="double" value="$(arg follow_min_command_interval)"/>
             <param name="smooth_alpha" type="double" value="$(arg follow_smooth_alpha)"/>
@@ -159,6 +179,7 @@
             <param name="yaw_duration" type="double" value="$(arg follow_yaw_duration)"/>
             <param name="button_pulse_duration" type="double" value="$(arg follow_button_pulse_duration)"/>
             <param name="yaw_axis_sign" type="double" value="$(arg follow_yaw_axis_sign)"/>
+            <param name="yaw_axis_scale" type="double" value="$(arg follow_yaw_axis_scale)"/>
             <param name="return_to_rest_after_command" type="bool" value="$(arg follow_return_to_rest_after_command)"/>
             <param name="publish_debug_info" type="bool" value="$(arg follow_publish_debug_info)"/>
         </node>

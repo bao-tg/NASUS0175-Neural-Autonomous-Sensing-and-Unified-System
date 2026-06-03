@@ -12,7 +12,8 @@ HOST_GST_PLUGIN_DIR="/usr/lib/aarch64-linux-gnu/gstreamer-1.0"
 CONTAINER_NVIDIA_GST_PLUGIN_DIR="/opt/nvidia-gstreamer-1.0"
 HOST_TENSORRT_INCLUDE_DIR="/usr/include/aarch64-linux-gnu"
 HOST_TENSORRT_LIB_DIR="/usr/lib/aarch64-linux-gnu"
-HOST_CUDA_DIR="/usr/local/cuda"
+HOST_CUDA_DIR="$(readlink -f /usr/local/cuda)"
+HOST_CUDA_LIB_DIR="$HOST_CUDA_DIR/targets/aarch64-linux/lib"
 CONTAINER_TENSORRT_INCLUDE_DIR="/host_tensorrt_include"
 CONTAINER_TENSORRT_LIB_DIR="/host_tensorrt_lib"
 CONTAINER_CUDA_DIR="/host_cuda"
@@ -64,7 +65,7 @@ sudo docker run -it \
     "${DOCKER_X11_ARGS[@]}" \
     --env="OPENBLAS_CORETYPE=ARMV8" \
     --env="BLINKA_JETSON_NANO=1" \
-    --env="LD_LIBRARY_PATH=$HOST_TEGRA_EGL_DIR:$HOST_TEGRA_LIB_DIR:${LD_LIBRARY_PATH:-}" \
+    --env="LD_LIBRARY_PATH=/host_cuda/targets/aarch64-linux/lib:/host_cuda/lib64:$HOST_TEGRA_EGL_DIR:$HOST_TEGRA_LIB_DIR:${LD_LIBRARY_PATH:-}" \
     --env="__EGL_VENDOR_LIBRARY_FILENAMES=$HOST_TEGRA_EGL_DIR/nvidia.json" \
     --env="GST_PLUGIN_PATH=$CONTAINER_NVIDIA_GST_PLUGIN_DIR:${GST_PLUGIN_PATH:-}" \
     --env="GST_REGISTRY=/tmp/gst-registry-dingo-vision.bin" \
@@ -79,6 +80,8 @@ sudo docker run -it \
     --volume="$HOST_TENSORRT_LIB_DIR/libcudnn_adv_infer.so.8.2.1:/usr/lib/aarch64-linux-gnu/libcudnn_adv_infer.so.8.2.1:ro" \
     --volume="$HOST_TENSORRT_LIB_DIR/libcudnn_cnn_infer.so.8.2.1:/usr/lib/aarch64-linux-gnu/libcudnn_cnn_infer.so.8.2.1:ro" \
     --volume="$HOST_TENSORRT_LIB_DIR/libcudnn_ops_infer.so.8.2.1:/usr/lib/aarch64-linux-gnu/libcudnn_ops_infer.so.8.2.1:ro" \
+    --volume="$HOST_CUDA_LIB_DIR/libcublas.so.10.2.3.300:/usr/lib/aarch64-linux-gnu/libcublas.so.10.2.3.300:ro" \
+    --volume="$HOST_CUDA_LIB_DIR/libcublasLt.so.10.2.3.300:/usr/lib/aarch64-linux-gnu/libcublasLt.so.10.2.3.300:ro" \
     --volume="$HOST_CUDA_DIR:$CONTAINER_CUDA_DIR:ro" \
     --volume="$HOST_YOLO_MODELS_DIR:$CONTAINER_YOLO_MODELS_DIR:ro" \
     --volume="$HOST_DIR/src:$CONTAINER_DIR/src" \

@@ -54,7 +54,7 @@ class PersonFollowNode:
         self.lock_delay = float(rospy.get_param("~lock_delay", 10.0))
         self.command_rate = float(rospy.get_param("~command_rate", 1.0))
         self.target_timeout = float(rospy.get_param("~target_timeout", 2.0))
-        self.reacquire_timeout = float(rospy.get_param("~reacquire_timeout", 5.0))
+        self.reacquire_timeout = float(rospy.get_param("~reacquire_timeout", 50.0))
 
         self.center_deadband_ratio = float(rospy.get_param("~center_deadband_ratio", 0.08))
         self.distance_deadband_ratio = float(rospy.get_param("~distance_deadband_ratio", 0.12))
@@ -62,6 +62,8 @@ class PersonFollowNode:
         self.max_yaw_cmd = float(rospy.get_param("~max_yaw_cmd", 0.35))
         self.area_gain = float(rospy.get_param("~area_gain", 1.2))
         self.target_height_ratio = float(rospy.get_param("~target_height_ratio", 0.8))
+        self.target_area_ratio = float(rospy.get_param("~target_area_ratio", 0.25))
+        self.step_scale = float(rospy.get_param("~step_scale", 5.0))
         self.max_steps = int(rospy.get_param("~max_steps", 2))
         self.min_command_interval = float(rospy.get_param("~min_command_interval", 1.0))
         self.smooth_alpha = float(rospy.get_param("~smooth_alpha", 0.35))
@@ -77,6 +79,7 @@ class PersonFollowNode:
         self.yaw_duration = float(rospy.get_param("~yaw_duration", 0.45))
         self.button_pulse_duration = float(rospy.get_param("~button_pulse_duration", 0.18))
         self.yaw_axis_sign = float(rospy.get_param("~yaw_axis_sign", -1.0))
+        self.yaw_axis_scale = float(rospy.get_param("~yaw_axis_scale", 2.0))
         self.return_to_rest_after_command = bool(rospy.get_param("~return_to_rest_after_command", True))
 
         self.enable_appearance_reacquire = bool(rospy.get_param("~enable_appearance_reacquire", True))
@@ -267,8 +270,8 @@ class PersonFollowNode:
         self.update_target_histogram(target, allow_initialize=True)
         if not self.enable_appearance_reacquire or self.target_hist is not None:
             self.stop_image_subscription()
-        self.state = f"locked id={self.target_id} target_height_ratio={self.target_height_ratio:.2f}"
-        rospy.loginfo("Locked follow target id=%s bbox=(%.1f %.1f %.1f %.1f) target_height_ratio=%.2f", self.target_id, target.x1, target.y1, target.x2, target.y2, self.target_height_ratio)
+        self.state = f"locked id={self.target_id} target_area_ratio={self.target_area_ratio:.3f}"
+        rospy.loginfo("Locked follow target id=%s bbox=(%.1f %.1f %.1f %.1f) target_area_ratio=%.3f", self.target_id, target.x1, target.y1, target.x2, target.y2, self.target_area_ratio)
 
     def reacquire_by_appearance(self, tracks: Dict[int, Track]) -> Optional[Track]:
         if not tracks:
@@ -337,7 +340,7 @@ class PersonFollowNode:
             msg.data = [1.0, track.x1, track.y1, track.width, track.height]
         self.target_bbox_pub.publish(msg)
 
-    def publish_debug_command(self, action, track: Optional[Track], center_error_norm=None, yaw_axis=0.0, steps=0, height_ratio=None, distance_error=None):
+    def publish_debug_command(self, action, track: Optional[Track], center_error_norm=None, yaw_axis=0.0, steps=0, raw_steps=0.0, height_ratio=None, area_ratio=None, distance_error=None):
         if self.debug_info_pub is None:
             return
         payload = {
@@ -349,7 +352,11 @@ class PersonFollowNode:
             "smoothed_yaw": self.smoothed_yaw,
             "yaw_axis": yaw_axis,
             "steps": int(steps),
+            "raw_steps": raw_steps,
+            "step_scale": self.step_scale,
             "height_ratio": height_ratio,
+            "area_ratio": area_ratio,
+            "target_area_ratio": self.target_area_ratio,
             "target_height_ratio": self.target_height_ratio,
             "distance_error": distance_error,
             "command_busy": self.command_busy,
@@ -460,7 +467,7 @@ class PersonFollowNode:
             yaw_cmd = max(-self.max_yaw_cmd, min(self.max_yaw_cmd, raw_yaw))
             self.smoothed_yaw = (1.0 - self.smooth_alpha) * self.smoothed_yaw + self.smooth_alpha * yaw_cmd
             axes = self.neutral_axes()
-            axes[3] = self.yaw_axis_sign * self.smoothed_yaw
+            axes[3] = max(-1.0, min(1.0, self.yaw_axis_sign * self.smoothed_yaw * self.yaw_axis_scale))
             if self.start_joy_command(axes, self.yaw_duration):
                 self.last_command_time = now
                 self.state = f"turn id={self.target_id} yaw_axis={axes[3]:.3f} err={center_error_norm:.3f}"
@@ -477,24 +484,26 @@ class PersonFollowNode:
             self.publish_neutral()
 
         height_ratio = target.height / max(self.image_height, 1.0)
-        distance_error = self.target_height_ratio - height_ratio
+        area_ratio = target.area / max(self.image_width * self.image_height, 1.0)
+        distance_error = self.target_area_ratio - area_ratio
         steps = 0
         if distance_error > self.distance_deadband_ratio:
-            steps = int(round(self.area_gain * distance_error))
+            raw_steps = self.area_gain * distance_error * self.step_scale
+            steps = int(round(raw_steps))
             steps = max(1, min(self.max_steps, steps))
             axes = self.neutral_axes()
             axes[1] = self.linear_axis_value
             if self.start_joy_command(axes, max(steps, 1) * self.step_duration):
                 self.last_command_time = now
-                self.state = f"forward id={self.target_id} steps={steps} axis={axes[1]:.2f} height_ratio={height_ratio:.2f} target={self.target_height_ratio:.2f}"
+                self.state = f"forward id={self.target_id} steps={steps} axis={axes[1]:.2f} area_ratio={area_ratio:.3f} target={self.target_area_ratio:.3f}"
                 action = "forward"
             else:
-                self.state = f"forward_wait id={self.target_id} steps={steps} height_ratio={height_ratio:.2f}"
+                self.state = f"forward_wait id={self.target_id} steps={steps} area_ratio={area_ratio:.3f}"
                 action = "forward_wait"
-            self.publish_debug_command(action, target, center_error_norm=center_error_norm, yaw_axis=0.0, steps=steps, height_ratio=height_ratio, distance_error=distance_error)
+            self.publish_debug_command(action, target, center_error_norm=center_error_norm, yaw_axis=0.0, steps=steps, raw_steps=raw_steps, height_ratio=height_ratio, area_ratio=area_ratio, distance_error=distance_error)
         else:
-            self.state = f"aligned id={self.target_id} height_ratio={height_ratio:.2f} target={self.target_height_ratio:.2f} center_err={center_error_norm:.3f}"
-            self.publish_debug_command("aligned", target, center_error_norm=center_error_norm, yaw_axis=0.0, steps=0, height_ratio=height_ratio, distance_error=distance_error)
+            self.state = f"aligned id={self.target_id} area_ratio={area_ratio:.3f} target={self.target_area_ratio:.3f} height_ratio={height_ratio:.2f} center_err={center_error_norm:.3f}"
+            self.publish_debug_command("aligned", target, center_error_norm=center_error_norm, yaw_axis=0.0, steps=0, raw_steps=0.0, height_ratio=height_ratio, area_ratio=area_ratio, distance_error=distance_error)
 
         self.status_pub.publish(String(data=self.state))
 

@@ -34,6 +34,15 @@ for lib in libcudnn_ops_infer libcudnn_cnn_infer libcudnn_adv_infer; do
     fi
 done
 
+for lib in libcublas libcublasLt; do
+    if [ -f "/usr/lib/aarch64-linux-gnu/${lib}.so.10.2.3.300" ]; then
+        ln -sf "/usr/lib/aarch64-linux-gnu/${lib}.so.10.2.3.300" "/usr/lib/aarch64-linux-gnu/${lib}.so.10"
+        ln -sf "/usr/lib/aarch64-linux-gnu/${lib}.so.10.2.3.300" "/usr/lib/aarch64-linux-gnu/${lib}.so"
+    fi
+done
+
+export LD_LIBRARY_PATH="/host_cuda/targets/aarch64-linux/lib:/host_cuda/lib64:/usr/lib/aarch64-linux-gnu:${LD_LIBRARY_PATH:-}"
+
 if [ ! -c /dev/spidev0.0 ]; then
     mknod /dev/spidev0.0 c 153 0 2>/dev/null || true
     chmod 666 /dev/spidev0.0 2>/dev/null || true

@@ -54,7 +54,8 @@ class IntentLLMNode(object):
             "Classify a voice command for a quadruped robot. Return only JSON with keys: "
             "category, action, direction, steps, degrees, raw_text. category must be exactly one of "
             "\"Describe the scene\", \"Control mode\", \"Unknown\". "
-            "Use Control mode for sit, stand up, move forward/backward/left/right, turn, stop. "
+            "Use Control mode for sit, stand up, move forward/backward/left/right, turn, stop, follow me, and stop following. "
+            "Use action follow for follow me/start tracking, and stop_follow for stop following. "
             "For turn commands, extract degrees when the user says degrees; turn around means 180 degrees. "
             "Use Describe the scene when the user asks what the robot sees."
         )
@@ -85,6 +86,11 @@ class IntentLLMNode(object):
         lower = text.lower()
         if any(phrase in lower for phrase in ["describe what you see", "what do you see", "describe the scene", "look around"]):
             return {"category": "Describe the scene", "action": "describe_scene", "direction": None, "steps": None, "raw_text": text}
+
+        if any(phrase in lower for phrase in ["stop following", "stop follow", "stop tracking", "cancel follow", "cancel following"]):
+            return {"category": "Control mode", "action": "stop_follow", "direction": None, "steps": None, "degrees": None, "raw_text": text}
+        if any(phrase in lower for phrase in ["follow me", "start following", "start follow", "track me", "start tracking", "follow person"]):
+            return {"category": "Control mode", "action": "follow", "direction": None, "steps": None, "degrees": None, "raw_text": text}
 
         action = None
         direction = None

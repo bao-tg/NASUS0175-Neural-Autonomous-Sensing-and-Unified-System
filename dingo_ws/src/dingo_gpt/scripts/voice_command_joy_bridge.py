@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 import rospy
 from sensor_msgs.msg import Joy
-from std_msgs.msg import String
+from std_msgs.msg import Bool, String
 
 
 class VoiceCommandJoyBridge(object):
@@ -31,6 +31,7 @@ class VoiceCommandJoyBridge(object):
 
         self.pub_joy = rospy.Publisher("joy", Joy, queue_size=10)
         self.pub_tts = rospy.Publisher("/tts_input", String, queue_size=10)
+        self.pub_follow_enable = rospy.Publisher("/person_follow/enable", Bool, queue_size=1, latch=True)
         rospy.Subscriber("/robot_command", String, self.command_callback, queue_size=10)
 
         self.lock = threading.Lock()
@@ -76,6 +77,9 @@ class VoiceCommandJoyBridge(object):
 
         rospy.loginfo("Voice bridge: executing %s", json.dumps(command, sort_keys=True))
 
+        if action not in ["follow"]:
+            self.pub_follow_enable.publish(Bool(data=False))
+
         if action == "move":
             self.run_move(direction, self.get_steps(command))
         elif action == "turn":
@@ -86,6 +90,10 @@ class VoiceCommandJoyBridge(object):
             self.run_stand()
         elif action == "stop":
             self.run_stop()
+        elif action == "follow":
+            self.run_follow()
+        elif action == "stop_follow":
+            self.run_stop_follow()
         else:
             rospy.logwarn("Voice bridge: unsupported action %r", action)
             if self.speak_ack:
@@ -163,10 +171,23 @@ class VoiceCommandJoyBridge(object):
             self.pub_tts.publish("Standing up.")
 
     def run_stop(self):
+        self.pub_follow_enable.publish(Bool(data=False))
         self.publish_neutral()
         self.ensure_rest()
         if self.speak_ack:
             self.pub_tts.publish("Stopped.")
+
+    def run_follow(self):
+        self.pub_follow_enable.publish(Bool(data=True))
+        if self.speak_ack:
+            self.pub_tts.publish("Starting follow mode. Stand still while I lock on.")
+
+    def run_stop_follow(self):
+        self.pub_follow_enable.publish(Bool(data=False))
+        self.publish_neutral()
+        self.ensure_rest()
+        if self.speak_ack:
+            self.pub_tts.publish("Follow mode stopped.")
 
     def ensure_trot(self):
         if not self.in_trot:

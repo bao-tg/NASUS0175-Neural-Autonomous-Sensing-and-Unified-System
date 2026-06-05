@@ -24,6 +24,7 @@
     <arg name="plot_frequency" default="100"/>
 
     <arg name="use_follow" default="1"/>
+    <arg name="follow_enabled" default="1"/>
     <arg name="follow_lock_delay" default="10.0"/>
     <arg name="follow_command_rate" default="2.0"/>
     <arg name="follow_center_deadband_ratio" default="0.15"/>
@@ -153,6 +154,7 @@
     <group if="$(arg use_follow)">
         <node pkg="follow" type="person_follow_node.py" name="person_follow" launch-prefix="taskset -c $(arg vision_cpu)" output="screen">
             <param name="tracks_topic" value="/yolo_tracker/tracks"/>
+            <param name="enabled" type="bool" value="$(arg follow_enabled)"/>
             <param name="image_topic" value="/camera/image_raw"/>
             <param name="image_width" type="double" value="$(arg camera_width)"/>
             <param name="image_height" type="double" value="$(arg camera_height)"/>

@@ -15,6 +15,44 @@ from std_msgs.msg import Header
 from math import degrees
 
 
+class AttitudePID:
+    def __init__(self, kp, ki, kd, dt, deadband, integral_limit, output_limit):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.dt = dt
+        self.deadband = deadband
+        self.integral_limit = integral_limit
+        self.output_limit = output_limit
+        self.integral = 0.0
+        self.previous_error = 0.0
+        self.initialized = False
+
+    def reset(self):
+        self.integral = 0.0
+        self.previous_error = 0.0
+        self.initialized = False
+
+    def update(self, error):
+        if abs(error) < self.deadband:
+            error = 0.0
+
+        self.integral = np.clip(
+            self.integral + error * self.dt,
+            -self.integral_limit,
+            self.integral_limit,
+        )
+
+        derivative = 0.0
+        if self.initialized and self.dt > 0.0:
+            derivative = (error - self.previous_error) / self.dt
+        self.previous_error = error
+        self.initialized = True
+
+        output = self.kp * error + self.ki * self.integral + self.kd * derivative
+        return np.clip(output, -self.output_limit, self.output_limit)
+
+
 class Controller:
     """Controller and planner object
     """
@@ -37,11 +75,29 @@ class Controller:
         self.gait_controller = GaitController(self.config)
         self.swing_controller = SwingController(self.config)
         self.stance_controller = StanceController(self.config)
+        self.roll_stabilization_pid = self._create_attitude_pid()
+        self.pitch_stabilization_pid = self._create_attitude_pid()
 
         self.hop_transition_mapping = {BehaviorState.REST: BehaviorState.HOP, BehaviorState.HOP: BehaviorState.FINISHHOP, BehaviorState.FINISHHOP: BehaviorState.REST, BehaviorState.TROT: BehaviorState.HOP}
         self.trot_transition_mapping = {BehaviorState.REST: BehaviorState.TROT, BehaviorState.TROT: BehaviorState.REST, BehaviorState.HOP: BehaviorState.TROT, BehaviorState.FINISHHOP: BehaviorState.TROT}
         self.activate_transition_mapping = {BehaviorState.DEACTIVATED: BehaviorState.REST, BehaviorState.REST: BehaviorState.DEACTIVATED}
 
+
+
+    def _create_attitude_pid(self):
+        return AttitudePID(
+            self.config.imu_stabilization_kp,
+            self.config.imu_stabilization_ki,
+            self.config.imu_stabilization_kd,
+            self.config.dt,
+            self.config.imu_stabilization_deadband,
+            self.config.imu_stabilization_integral_limit,
+            self.config.imu_stabilization_output_limit,
+        )
+
+    def reset_imu_stabilization_pid(self):
+        self.roll_stabilization_pid.reset()
+        self.pitch_stabilization_pid.reset()
 
     def step_gait(self, state, command):
         """Calculate the desired foot locations for the next timestep
@@ -195,13 +251,16 @@ class Controller:
         )
         return state.joint_angles
     def stabilise_with_IMU(self,foot_locations,orientation):
-        ''' Applies euler orientatin data of pitch roall and yaw to stabilise hte robt. Current only applying to pitch.'''
+        '''Applies PID roll and pitch compensation from IMU orientation error.'''
         yaw,pitch,roll = orientation
-        # print('Yaw: ',np.round(np.degrees(yaw)),'Pitch: ',np.round(np.degrees(pitch)),'Roll: ',np.round(np.degrees(roll)))
-        correction_factor = 0.5
-        max_tilt = 0.4 #radians
-        roll_compensation = correction_factor * np.clip(-roll, -max_tilt, max_tilt)
-        pitch_compensation = correction_factor * np.clip(-pitch, -max_tilt, max_tilt)
+        if np.allclose([pitch, roll], [0.0, 0.0]):
+            self.reset_imu_stabilization_pid()
+            return foot_locations
+
+        roll_error = -roll
+        pitch_error = -pitch
+        roll_compensation = self.roll_stabilization_pid.update(roll_error)
+        pitch_compensation = self.pitch_stabilization_pid.update(pitch_error)
         rmat = euler2mat(roll_compensation, pitch_compensation, 0)
 
         rotated_foot_locations = rmat.T @ foot_locations

@@ -6,7 +6,7 @@ from sensor_msgs.msg import Joy
 class Keyboard:
     def __init__(self, keyboard):
         self.keyboard = keyboard
-        self.used_keys = ['w','a','s','d','1','2', '7','8','9','0', self.keyboard.Key.shift, self.keyboard.Key.backspace, self.keyboard.Key.up, self.keyboard.Key.down, self.keyboard.Key.left, self.keyboard.Key.right]
+        self.used_keys = ['w','a','s','d','z','x','1','2', '7','8','9','0', self.keyboard.Key.shift, self.keyboard.Key.backspace, self.keyboard.Key.up, self.keyboard.Key.down, self.keyboard.Key.left, self.keyboard.Key.right]
         self.speed_multiplier = 1
         self.joystick_message_pub = rospy.Publisher("joy", Joy, queue_size=10)
         self.keyboard_listener = self.keyboard.Listener(
@@ -16,7 +16,7 @@ class Keyboard:
 
         self.current_joy_message = Joy()
         self.current_joy_message.axes = [0.,0.,0.,0.,0.,0.,0.,0.]
-        self.current_joy_message.buttons = [0,0,0,0,0,0,0,0,0,0,0]
+        self.current_joy_message.buttons = [0,0,0,0,0,0,0,0,0,0,0,0,0]
 
         
     def on_press(self,key):
@@ -34,6 +34,10 @@ class Keyboard:
             msg.axes[0] = 0.5*self.speed_multiplier
         elif key == 'd' or key == 'D':
             msg.axes[0] = -0.5*self.speed_multiplier
+        elif key == 'z' or key == 'Z':
+            msg.buttons[11] = 1
+        elif key == 'x' or key == 'X':
+            msg.buttons[12] = 1
         elif key == '1':
             msg.buttons[5] = 1
         elif key == '2':
@@ -49,13 +53,13 @@ class Keyboard:
         elif key == self.keyboard.Key.right:
             msg.axes[3] = -0.5*self.speed_multiplier
         elif key == '0':
-            msg.axes[7] = 1
+            msg.axes[7] = 0.0
         elif key == '9':
-            msg.axes[7] = -1
+            msg.axes[7] = 0.0
         elif key == '8':
-            msg.axes[6] = 1
+            msg.axes[6] = 0.0
         elif key == '7':
-            msg.axes[6] = -1
+            msg.axes[6] = 0.0
         else: return
         self.current_joy_message = msg
         return
@@ -76,6 +80,10 @@ class Keyboard:
             msg.axes[0] = 0.0
         elif key == 'd' or key == 'D':
             msg.axes[0] = 0.0
+        elif key == 'z' or key == 'Z':
+            msg.buttons[11] = 0
+        elif key == 'x' or key == 'X':
+            msg.buttons[12] = 0
         elif key == '1':
             msg.buttons[5] = 0
         elif key == '2':
@@ -91,13 +99,13 @@ class Keyboard:
         elif key == self.keyboard.Key.right:
             msg.axes[3] = 0.0
         elif key == '0':
-            msg.axes[7] = 1
+            msg.axes[7] = 0.0
         elif key == '9':
-            msg.axes[7] = -1
+            msg.axes[7] = 0.0
         elif key == '8':
-            msg.axes[6] = 1
+            msg.axes[6] = 0.0
         elif key == '7':
-            msg.axes[6] = -1
+            msg.axes[6] = 0.0
 
         
         self.current_joy_message = msg

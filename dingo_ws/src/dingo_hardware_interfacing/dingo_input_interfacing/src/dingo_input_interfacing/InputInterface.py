@@ -13,49 +13,69 @@ class InputInterface:
         self.previous_state = BehaviorState.REST
         self.previous_hop_toggle = 0
         self.previous_joystick_toggle = 0
+        self.previous_imu_activate_toggle = 0
+        self.previous_imu_deactivate_toggle = 0
 
         self.rounding_dp = 2
 
         self.hop_event = 0
         self.trot_event = 0
         self.joystick_control_event = 0
+        self.imu_activate_event = 0
+        self.imu_deactivate_event = 0
 
         self.input_messages = rospy.Subscriber("joy", Joy, self.input_callback)
         self.current_command = Command()
         self.new_command = Command()
         self.developing_command = Command()
 
+    def _button(self, msg, index):
+        return msg.buttons[index] if len(msg.buttons) > index else 0
+
+    def _axis(self, msg, index):
+        return msg.axes[index] if len(msg.axes) > index else 0.0
+
     def input_callback(self, msg):
         self.developing_command = Command()
         ####### Handle discrete commands ########
         # Check if requesting a state transition to trotting, or from trotting to resting
-        gait_toggle = msg.buttons[5] #R1
+        gait_toggle = self._button(msg, 5) #R1
         if self.trot_event != 1:
             self.trot_event = (gait_toggle == 1 and self.previous_gait_toggle == 0)
 
         # Check if requesting a state transition to hopping, from trotting or resting
-        hop_toggle = msg.buttons[0] #x
+        hop_toggle = self._button(msg, 0) #x
         if self.hop_event != 1:
             self.hop_event = (hop_toggle == 1 and self.previous_hop_toggle == 0)            
         
-        joystick_toggle = msg.buttons[4] #L1
+        joystick_toggle = self._button(msg, 4) #L1
         if self.joystick_control_event != 1:
             self.joystick_control_event = (joystick_toggle == 1 and self.previous_joystick_toggle == 0)
+
+        imu_activate_toggle = self._button(msg, 11)
+        if self.imu_activate_event != 1:
+            self.imu_activate_event = (imu_activate_toggle == 1 and self.previous_imu_activate_toggle == 0)
+
+        imu_deactivate_toggle = self._button(msg, 12)
+        if self.imu_deactivate_event != 1:
+            self.imu_deactivate_event = (imu_deactivate_toggle == 1 and self.previous_imu_deactivate_toggle == 0)
 
         # Update previous values for toggles and state
         self.previous_gait_toggle = gait_toggle
         self.previous_hop_toggle = hop_toggle
         self.previous_joystick_toggle = joystick_toggle
+        self.previous_imu_activate_toggle = imu_activate_toggle
+        self.previous_imu_deactivate_toggle = imu_deactivate_toggle
 
         ####### Handle continuous commands ########
-        x_vel = (msg.axes[1] ) * self.config.max_x_velocity #ly
-        y_vel = msg.axes[0] * self.config.max_y_velocity #lx
+        x_vel = self._axis(msg, 1) * self.config.max_x_velocity #ly
+        y_vel = self._axis(msg, 0) * self.config.max_y_velocity #lx
         self.developing_command.horizontal_velocity =  np.round(np.array([x_vel, y_vel]),self.rounding_dp)
-        self.developing_command.yaw_rate = np.round(msg.axes[3],self.rounding_dp) * self.config.max_yaw_rate #rx
+        self.developing_command.yaw_rate = np.round(self._axis(msg, 3),self.rounding_dp) * self.config.max_yaw_rate #rx
 
-        self.developing_command.pitch = np.round(msg.axes[4],self.rounding_dp) * self.config.max_pitch #ry
-        self.developing_command.height_movement = np.round(msg.axes[7],self.rounding_dp) #dpady
-        self.developing_command.roll_movement = -np.round(msg.axes[6],self.rounding_dp) #dpadx
+        self.developing_command.pitch = np.round(self._axis(msg, 4),self.rounding_dp) * self.config.max_pitch #ry
+        self.developing_command.height_movement = np.round(self._axis(msg, 7),self.rounding_dp) #dpady
+        self.developing_command.roll_movement = -np.round(self._axis(msg, 6),self.rounding_dp) #dpadx
 
         self.new_command = self.developing_command
         
@@ -66,9 +86,13 @@ class InputInterface:
         self.current_command.trot_event = self.trot_event
         self.current_command.hop_event  = self.hop_event
         self.current_command.joystick_control_event = self.joystick_control_event
+        self.current_command.imu_activate_event = self.imu_activate_event
+        self.current_command.imu_deactivate_event = self.imu_deactivate_event
         self.hop_event = 0
         self.trot_event = 0
         self.joystick_control_event = 0
+        self.imu_activate_event = 0
+        self.imu_deactivate_event = 0
 
         message_dt = 1.0 / message_rate
 

@@ -7,11 +7,13 @@ ENV CONDA_DIR=/opt/conda
 ENV VISION_CONDA_ENV=phuc
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    alsa-utils \
     bzip2 \
     ca-certificates \
     curl \
     pkg-config \
     procps \
+    python3-pip \
     gstreamer1.0-tools \
     gstreamer1.0-plugins-base \
     gstreamer1.0-plugins-good \
@@ -36,7 +38,8 @@ RUN pip3 install --no-cache-dir \
     Jetson.GPIO \
     adafruit-blinka \
     adafruit-circuitpython-servokit \
-    adafruit-circuitpython-bno055
+    adafruit-circuitpython-bno055 \
+    openai==0.28
 
 RUN curl -fsSL -o /tmp/miniforge.sh \
     https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh \

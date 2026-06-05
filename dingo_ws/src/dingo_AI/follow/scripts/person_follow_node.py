@@ -11,7 +11,7 @@ import numpy as np
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, Joy
-from std_msgs.msg import Float32MultiArray, String
+from std_msgs.msg import Bool, Float32MultiArray, String
 
 
 @dataclass
@@ -71,6 +71,7 @@ class PersonFollowNode:
         self.person_class = int(rospy.get_param("~person_class", 0))
         self.publish_zero_yaw = bool(rospy.get_param("~publish_zero_yaw", False))
         self.publish_debug_info = bool(rospy.get_param("~publish_debug_info", False))
+        self.enabled = bool(rospy.get_param("~enabled", True))
 
         self.joy_topic = rospy.get_param("~joy_topic", "joy")
         self.joy_rate_hz = float(rospy.get_param("~joy_rate_hz", 30.0))
@@ -113,15 +114,50 @@ class PersonFollowNode:
         self.status_pub = rospy.Publisher("~status", String, queue_size=1)
         self.debug_info_pub = rospy.Publisher("~debug_info", String, queue_size=1) if self.publish_debug_info else None
         self.sub = rospy.Subscriber(self.tracks_topic, Float32MultiArray, self.tracks_callback, queue_size=1)
+        self.enable_sub = rospy.Subscriber("/person_follow/enable", Bool, self.enable_callback, queue_size=1)
         self.timer = rospy.Timer(rospy.Duration(1.0 / max(self.command_rate, 0.1)), self.control_tick)
         rospy.loginfo(
-            "Person follow waits %.1fs before lock; tracks=%s image=%s appearance_reacquire=%s threshold=%.2f",
+            "Person follow enabled=%s waits %.1fs before lock; tracks=%s image=%s appearance_reacquire=%s threshold=%.2f",
+            self.enabled,
             self.lock_delay,
             self.tracks_topic,
             self.image_topic,
             self.enable_appearance_reacquire,
             self.appearance_match_threshold,
         )
+
+
+    def reset_follow_state(self):
+        self.start_time = time.time()
+        self.target_id = None
+        self.goal_width = None
+        self.last_target_track = None
+        self.last_target_seen_time = 0.0
+        self.last_command_time = 0.0
+        self.smoothed_yaw = 0.0
+        self.target_hist = None
+        self.last_hist_score = None
+        self.state = "waiting_to_lock"
+        self.stop_image_subscription()
+        self.publish_neutral()
+
+    def enable_callback(self, msg: Bool):
+        requested = bool(msg.data)
+        if requested:
+            self.enabled = True
+            self.reset_follow_state()
+            rospy.loginfo("Person follow enabled by /person_follow/enable; starting %.1fs lock countdown", self.lock_delay)
+            return
+        if not self.enabled:
+            return
+        self.enabled = False
+        self.reset_follow_state()
+        self.ensure_rest()
+        self.state = "disabled"
+        self.publish_target_bbox(None)
+        self.status_pub.publish(String(data=self.state))
+        self.publish_debug_command("disabled", None)
+        rospy.loginfo("Person follow disabled by /person_follow/enable")
 
 
     def ensure_image_subscription(self):
@@ -348,6 +384,7 @@ class PersonFollowNode:
             "state": self.state,
             "action": action,
             "target_id": self.target_id,
+            "enabled": self.enabled,
             "center_error_norm": center_error_norm,
             "smoothed_yaw": self.smoothed_yaw,
             "yaw_axis": yaw_axis,
@@ -443,6 +480,13 @@ class PersonFollowNode:
         return True
 
     def control_tick(self, _event):
+        if not self.enabled:
+            self.state = "disabled"
+            self.publish_target_bbox(None)
+            self.status_pub.publish(String(data=self.state))
+            self.publish_debug_command("disabled", None)
+            return
+
         self.maybe_lock_target()
         target = self.get_target_track()
         self.publish_target_bbox(target)

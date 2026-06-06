@@ -11,7 +11,7 @@ from transforms3d.quaternions import qconjugate, quat2axangle
 from transforms3d.axangles import axangle2mat
 import rospy
 from geometry_msgs.msg import Point
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Float64
 from math import degrees
 
 
@@ -67,6 +67,10 @@ class Controller:
                 ################# ROS PUBLISHER FOR TASK SPACE GOALS ##############
         self.task_space_pub = rospy.Publisher('task_space_goals', TaskSpace, queue_size=10)
         self.joint_space_pub = rospy.Publisher('joint_space_goals', JointSpace, queue_size=10)
+        self.imu_roll_remaining_error_pub = rospy.Publisher('/dingo/imu/roll_remaining_error', Float64, queue_size=10)
+        self.imu_pitch_remaining_error_pub = rospy.Publisher('/dingo/imu/pitch_remaining_error', Float64, queue_size=10)
+        self.imu_roll_compensation_pub = rospy.Publisher('/dingo/imu/roll_compensation', Float64, queue_size=10)
+        self.imu_pitch_compensation_pub = rospy.Publisher('/dingo/imu/pitch_compensation', Float64, queue_size=10)
 
         self.smoothed_yaw = 0.0  # for REST mode only
         self.inverse_kinematics = inverse_kinematics
@@ -98,6 +102,12 @@ class Controller:
     def reset_imu_stabilization_pid(self):
         self.roll_stabilization_pid.reset()
         self.pitch_stabilization_pid.reset()
+
+    def publish_imu_stabilization_debug(self, roll_error, pitch_error, roll_compensation, pitch_compensation):
+        self.imu_roll_remaining_error_pub.publish(Float64(roll_error))
+        self.imu_pitch_remaining_error_pub.publish(Float64(pitch_error))
+        self.imu_roll_compensation_pub.publish(Float64(roll_compensation))
+        self.imu_pitch_compensation_pub.publish(Float64(pitch_compensation))
 
     def step_gait(self, state, command):
         """Calculate the desired foot locations for the next timestep
@@ -192,6 +202,7 @@ class Controller:
             max_tilt = 0.4
             roll_compensation = correction_factor * np.clip(roll, -max_tilt, max_tilt)
             pitch_compensation = correction_factor * np.clip(pitch, -max_tilt, max_tilt)
+            self.publish_imu_stabilization_debug(roll, pitch, roll_compensation, pitch_compensation)
             rmat = euler2mat(roll_compensation, pitch_compensation, 0)
 
             rotated_foot_locations = rmat.T @ rotated_foot_locations
@@ -255,12 +266,14 @@ class Controller:
         yaw,pitch,roll = orientation
         if np.allclose([pitch, roll], [0.0, 0.0]):
             self.reset_imu_stabilization_pid()
+            self.publish_imu_stabilization_debug(0.0, 0.0, 0.0, 0.0)
             return foot_locations
 
         roll_error = -roll
         pitch_error = -pitch
         roll_compensation = self.roll_stabilization_pid.update(roll_error)
         pitch_compensation = self.pitch_stabilization_pid.update(pitch_error)
+        self.publish_imu_stabilization_debug(roll, pitch, roll_compensation, pitch_compensation)
         rmat = euler2mat(roll_compensation, pitch_compensation, 0)
 
         rotated_foot_locations = rmat.T @ foot_locations

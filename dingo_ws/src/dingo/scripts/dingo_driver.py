@@ -45,6 +45,10 @@ class DingoDriver:
         self.joint_command_sub = rospy.Subscriber("/joint_space_cmd", JointSpace, self.run_joint_space_command)
         self.task_command_sub = rospy.Subscriber("/task_space_cmd", TaskSpace, self.run_task_space_command)
         self.estop_status_sub = rospy.Subscriber("/emergency_stop_status", Bool, self.update_emergency_stop_status)
+        self.imu_yaw_pub = rospy.Publisher("/dingo/imu/yaw", Float64, queue_size=10)
+        self.imu_pitch_pub = rospy.Publisher("/dingo/imu/pitch", Float64, queue_size=10)
+        self.imu_roll_pub = rospy.Publisher("/dingo/imu/roll", Float64, queue_size=10)
+        self.imu_active_pub = rospy.Publisher("/dingo/imu/active", Float64, queue_size=10)
         self.external_commands_enabled = 0
 
         if self.is_sim:
@@ -195,6 +199,15 @@ class DingoDriver:
             self.state.euler_orientation = self.state.imu_zero_orientation - np.array(self.imu.read_orientation())
         else:
             self.state.euler_orientation = np.array([0.0, 0.0, 0.0])
+
+        self.publish_imu_debug()
+
+    def publish_imu_debug(self):
+        yaw, pitch, roll = self.state.euler_orientation
+        self.imu_yaw_pub.publish(Float64(yaw))
+        self.imu_pitch_pub.publish(Float64(pitch))
+        self.imu_roll_pub.publish(Float64(roll))
+        self.imu_active_pub.publish(Float64(1.0 if self.state.imu_active else 0.0))
 
     def update_emergency_stop_status(self, msg):
         if msg.data == 1:

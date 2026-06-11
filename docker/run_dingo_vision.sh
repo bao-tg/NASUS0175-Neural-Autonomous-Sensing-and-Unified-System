@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-IMAGE_NAME="dingo-vision:latest"
+IMAGE_NAME="${DINGO_IMAGE_NAME:-dingo-full:latest}"
 CONTAINER_NAME="${DINGO_VISION_CONTAINER_NAME:-dingo_vision_$$}"
 HOST_DIR="$HOME/Documents/DingoQuadruped/dingo_ws"
 CONTAINER_DIR="/dingo_ws"
@@ -53,6 +53,27 @@ else
     echo "DISPLAY is not set; running container without X11 GUI forwarding." >&2
 fi
 
+ensure_argus_socket() {
+    if [ -d /tmp/argus_socket ]; then
+        echo "[WARN] Removing stale /tmp/argus_socket directory so nvargus-daemon can create its socket..." >&2
+        sudo rm -rf /tmp/argus_socket
+    fi
+
+    if ! systemctl is-active --quiet nvargus-daemon.service; then
+        echo "[INFO] Starting nvargus-daemon.service on host..." >&2
+        sudo systemctl daemon-reload
+        sudo systemctl start nvargus-daemon.service
+    fi
+
+    if [ ! -S /tmp/argus_socket ]; then
+        echo "[ERROR] nvargus-daemon did not create /tmp/argus_socket." >&2
+        systemctl status nvargus-daemon.service --no-pager >&2 || true
+        exit 1
+    fi
+}
+
+ensure_argus_socket
+
 mkdir -p "$HOST_DIR/build" "$HOST_DIR/devel"
 mkdir -p "$HOST_YOLO_MODELS_DIR"
 
@@ -65,6 +86,8 @@ sudo docker run -it \
     "${DOCKER_X11_ARGS[@]}" \
     --env="OPENBLAS_CORETYPE=ARMV8" \
     --env="BLINKA_JETSON_NANO=1" \
+    --env="OPENAI_API_KEY=${OPENAI_API_KEY:-}" \
+    --env="OPENAI_API_BASE=${OPENAI_API_BASE:-https://api.openai.com/v1}" \
     --env="LD_LIBRARY_PATH=/host_cuda/targets/aarch64-linux/lib:/host_cuda/lib64:$HOST_TEGRA_EGL_DIR:$HOST_TEGRA_LIB_DIR:${LD_LIBRARY_PATH:-}" \
     --env="__EGL_VENDOR_LIBRARY_FILENAMES=$HOST_TEGRA_EGL_DIR/nvidia.json" \
     --env="GST_PLUGIN_PATH=$CONTAINER_NVIDIA_GST_PLUGIN_DIR:${GST_PLUGIN_PATH:-}" \

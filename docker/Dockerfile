@@ -53,8 +53,10 @@ RUN source "${CONDA_DIR}/etc/profile.d/conda.sh" \
     && rm -f /tmp/environment-phuc.yml
 
 COPY dingo_ws/src /dingo_ws/src
-RUN source "/opt/ros/${ROS_DISTRO}/setup.bash" \
-    && catkin_make --directory /dingo_ws -DCMAKE_BUILD_TYPE=Release
+RUN touch /dingo_ws/src/dingo_AI/yolox/CATKIN_IGNORE \
+    && source "/opt/ros/${ROS_DISTRO}/setup.bash" \
+    && catkin_make --directory /dingo_ws -DCMAKE_BUILD_TYPE=Release \
+    && rm -f /dingo_ws/src/dingo_AI/yolox/CATKIN_IGNORE
 
 COPY docker/ros_vision_entrypoint.sh /ros_vision_entrypoint.sh
 RUN chmod +x /ros_vision_entrypoint.sh \

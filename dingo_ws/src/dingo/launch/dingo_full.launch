@@ -10,6 +10,7 @@
   <arg name="audio_device" default="plughw:2,0"/>
   <arg name="playback_device" default="plughw:2,0"/>
   <arg name="wake_phrase" default="hey robot"/>
+  <arg name="wake_aliases" default="hey robot,hi robot,hey robots,hi robots,hey robo,hi robo,hey robert,hi robert,robot,robots"/>
   <arg name="wake_engine" default="cloud"/>
   <arg name="stt_model" default="gpt-4o-transcribe"/>
   <arg name="command_start_delay" default="0.15"/>
@@ -65,6 +66,7 @@
     <arg name="audio_device" value="$(arg audio_device)"/>
     <arg name="playback_device" value="$(arg playback_device)"/>
     <arg name="wake_phrase" value="$(arg wake_phrase)"/>
+    <arg name="wake_aliases" value="$(arg wake_aliases)"/>
     <arg name="wake_engine" value="$(arg wake_engine)"/>
     <arg name="stt_model" value="$(arg stt_model)"/>
     <arg name="command_start_delay" value="$(arg command_start_delay)"/>

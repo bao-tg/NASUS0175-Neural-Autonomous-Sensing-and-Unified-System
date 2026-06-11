@@ -2,6 +2,7 @@
   <arg name="audio_device" default="plughw:2,0"/>
   <arg name="playback_device" default="plughw:2,0"/>
   <arg name="wake_phrase" default="hey robot"/>
+  <arg name="wake_aliases" default="hey robot,hi robot,hey robots,hi robots,hey robo,hi robo,hey robert,hi robert"/>
   <arg name="wake_engine" default="cloud"/>
   <arg name="stt_model" default="gpt-4o-transcribe"/>
   <arg name="command_start_delay" default="0.15"/>
@@ -30,6 +31,7 @@
   <node pkg="dingo_gpt" type="wakeup_and_record_node.py" name="wakeup_and_record_node" output="screen">
     <param name="audio_device" value="$(arg audio_device)"/>
     <param name="wake_phrase" value="$(arg wake_phrase)"/>
+    <param name="wake_aliases" value="$(arg wake_aliases)"/>
     <param name="wake_engine" value="$(arg wake_engine)"/>
     <param name="stt_model" value="$(arg stt_model)"/>
     <param name="command_start_delay" value="$(arg command_start_delay)"/>

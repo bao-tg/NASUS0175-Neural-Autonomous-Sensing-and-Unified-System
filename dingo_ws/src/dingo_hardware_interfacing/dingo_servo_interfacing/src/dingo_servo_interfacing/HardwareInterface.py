@@ -22,7 +22,7 @@ class HardwareInterface():
                 #  2  [front_right_lower, front_left_lower, back_right_lower, back_left_lower]] 
 
            'pins' define the physical pin of the servos on the servoboard """
-        self.pins = np.array([[14,10,2,6], 
+        self.pins = np.array([[14,10,3,6], 
                               [13,9,1,5], 
                               [12,8,0,4]])
 
@@ -127,7 +127,7 @@ class HardwareInterface():
         # print('Uncorrected servo_angles: ',self.servo_angles)
             
         # print("joint angles (degrees): \n", np.round(np.degrees(joint_angles), 1))
-        print("raw servo angles (degrees): \n", np.round(self.servo_angles[:,0], 1))
+        # print("raw servo angles (degrees): \n", np.round(self.servo_angles[:,0], 1))
         # print("servo angles after calibration (degrees): \n", np.round(self.servo_angles + self.physical_calibration_offsets, 1))
         
         # Adding final physical offset angles from servo calibration and clipping to 180 degree max

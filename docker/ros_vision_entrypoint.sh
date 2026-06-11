@@ -3,6 +3,11 @@ set -e
 
 # Runtime debug fixes. Keep these here while iterating so the image does not need
 # a full rebuild for small Python dependency changes.
+if ! command -v arecord >/dev/null 2>&1; then
+    echo "[ERROR] arecord is missing. Rebuild dingo-vision:latest so Dockerfile installs alsa-utils." >&2
+    exit 1
+fi
+
 pip3 uninstall -y serial 2>/dev/null || true
 # pip3 install --no-cache-dir \
 #     Jetson.GPIO \

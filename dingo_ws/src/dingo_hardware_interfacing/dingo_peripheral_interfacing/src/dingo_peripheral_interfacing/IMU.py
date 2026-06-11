@@ -4,7 +4,7 @@ import numpy as np
 import time
 import time
 import board
-# import adafruit_bno055
+import adafruit_bno055
 import math as m
 
 class IMU:
@@ -27,11 +27,14 @@ class IMU:
             If there was quaternion data to read on the serial port returns the quaternion as a numpy array, otherwise returns the last read quaternion.
         """
         try: 
-            [yaw,pitch,roll] = self.sensor.euler
-            yaw = m.radians(360-yaw) 
-            pitch = m.radians(-pitch)
-            roll = m.radians(roll - 30) # fixed offset to account for the IMU being off by 30 degrees
-            self.last_euler = [yaw,pitch,roll]
+            heading, roll_x, pitch_y = self.sensor.euler
+            if heading is None or roll_x is None or pitch_y is None:
+                raise ValueError("IMU Euler reading unavailable")
+
+            yaw = m.radians(360 - heading)
+            pitch = m.radians(-pitch_y)
+            roll = m.radians(roll_x - 30) # fixed offset to account for the IMU being off by 30 degrees
+            self.last_euler = [yaw, pitch, roll]
         except:
             self.last_euler = np.array([ 0, 0, 0])
         return self.last_euler

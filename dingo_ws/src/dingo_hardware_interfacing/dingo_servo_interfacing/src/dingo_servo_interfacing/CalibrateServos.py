@@ -91,12 +91,12 @@ else:
                 #  2  [front_right_lower, front_left_lower, back_right_lower, back_left_lower]] """
 
 offsets = np.array(
-                    [[83, 97, 97, 85],
-                    [115, 2, 43, 0],
+                    [[83,90, 97, 85],
+                    [45, 2, 43, 0],
                     [38, 10, 38, 8]])
 
 #br, bl
-servo_name = "fr"
+servo_name = "all"
 if len(sys.argv) > 1 and sys.argv[1] in servo_dict:
     servo_name = sys.argv[1]
 

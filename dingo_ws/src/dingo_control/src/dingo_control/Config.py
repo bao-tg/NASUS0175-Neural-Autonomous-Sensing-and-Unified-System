@@ -29,6 +29,15 @@ class Configuration:
         self.max_stance_yaw = 1.2
         self.max_stance_yaw_rate = 1
 
+        #################### IMU STABILISATION PID ####################
+        # PID output is an additional roll/pitch compensation angle [rad].
+        self.imu_stabilization_kp = 0.6
+        self.imu_stabilization_ki = 0.001
+        self.imu_stabilization_kd = 0.005
+        self.imu_stabilization_deadband = m.radians(2)
+        self.imu_stabilization_integral_limit = 0.25
+        self.imu_stabilization_output_limit = 0.35
+
         #################### STANCE ####################
         self.delta_x = 0.117 #- 0.00535 #115650.00535
 

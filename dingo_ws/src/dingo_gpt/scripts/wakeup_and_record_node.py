@@ -4,6 +4,7 @@ import audioop
 import os
 import re
 import sys
+import math
 import struct
 import subprocess
 import tempfile
@@ -42,12 +43,18 @@ class WakeupAndRecordNode(object):
         self.silence_rms = int(rospy.get_param("~silence_rms", 450))
         self.wake_min_rms = int(rospy.get_param("~wake_min_rms", 250))
         self.min_command_seconds = float(rospy.get_param("~min_command_seconds", 0.6))
-        self.command_start_delay = float(rospy.get_param("~command_start_delay", 2.4))
+        self.command_start_delay = float(rospy.get_param("~command_start_delay", 0.15))
         self.wake_cooldown_seconds = float(rospy.get_param("~wake_cooldown_seconds", 2.0))
         self.language = rospy.get_param("~language", "")
         self.stt_model = rospy.get_param("~stt_model", "gpt-4o-transcribe")
         self.stt_prompt = rospy.get_param("~stt_prompt", "")
         self.wake_engine = rospy.get_param("~wake_engine", "cloud")
+        self.feedback_mode = rospy.get_param("~wake_feedback_mode", "beep")
+        self.beep_frequency = float(rospy.get_param("~beep_frequency", 880.0))
+        self.beep_duration = float(rospy.get_param("~beep_duration", 0.16))
+        self.beep_volume = float(rospy.get_param("~beep_volume", 0.35))
+        self.playback_device = rospy.get_param("~playback_device", "plughw:2,0")
+        self.beep_path = self.create_beep_wav()
 
         self.pub_audio = rospy.Publisher("/voice/audio_file", String, queue_size=10)
         self.pub_stt_text = rospy.Publisher("/stt_text", String, queue_size=10)
@@ -120,12 +127,46 @@ class WakeupAndRecordNode(object):
 
     def handle_wake(self):
         rospy.loginfo("Wake: detected '%s'", self.wake_phrase)
-        self.pub_tts.publish("Hi, what can I help you?")
+        self.play_wake_feedback()
         rospy.sleep(self.command_start_delay)
         command_path = self.record_until_silence()
         rospy.loginfo("Wake: command audio saved: %s", command_path)
         self.pub_audio.publish(command_path)
         rospy.sleep(self.wake_cooldown_seconds)
+
+    def play_wake_feedback(self):
+        if self.feedback_mode == "none":
+            return
+        if self.feedback_mode == "tts":
+            self.pub_tts.publish("Hi, what can I help you?")
+            return
+        if self.feedback_mode != "beep":
+            rospy.logwarn("Wake: unknown wake_feedback_mode '%s'; using beep", self.feedback_mode)
+        cmd = ["aplay", "-q"]
+        if self.playback_device:
+            cmd.extend(["-D", self.playback_device])
+        cmd.append(self.beep_path)
+        try:
+            subprocess.check_call(cmd)
+        except Exception as exc:
+            rospy.logerr("Wake: failed to play beep: %s", exc)
+
+    def create_beep_wav(self):
+        fd, path = tempfile.mkstemp(prefix="dingo_wake_beep_", suffix=".wav")
+        os.close(fd)
+        sample_rate = 24000
+        samples = int(sample_rate * max(0.02, self.beep_duration))
+        amplitude = int(32767 * max(0.0, min(1.0, self.beep_volume)))
+        with wave.open(path, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            frames = bytearray()
+            for index in range(samples):
+                value = int(amplitude * math.sin(2.0 * math.pi * self.beep_frequency * index / sample_rate))
+                frames.extend(struct.pack("<h", value))
+            wav_file.writeframes(bytes(frames))
+        return path
 
     def record_fixed_wav(self, seconds, prefix):
         fd, path = tempfile.mkstemp(prefix=prefix, suffix=".wav")

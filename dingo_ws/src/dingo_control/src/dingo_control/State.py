@@ -11,7 +11,9 @@ class State:
         self.roll = 0.0
         self.joystick_control_active = 1
         self.behavior_state = BehaviorState.REST
-        self.euler_orientation = [0,0,0]
+        self.euler_orientation = np.array([0.0, 0.0, 0.0])
+        self.imu_active = 0
+        self.imu_zero_orientation = np.array([0.0, 0.0, 0.0])
         self.ticks = 0
         self.foot_locations = np.zeros((3, 4))
         self.rotated_foot_locations = np.zeros((3, 4))

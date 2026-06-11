@@ -1,0 +1,5 @@
+<library path="lib/libyolo_trt_nodelet">
+  <class name="yolox/YoloTrtNodelet" type="yolox::YoloTrtNodelet" base_class_type="nodelet::Nodelet">
+    <description>TensorRT YOLO tracker nodelet for Dingo vision.</description>
+  </class>
+</library>

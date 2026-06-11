@@ -1,0 +1,84 @@
+<launch>
+  <arg name="is_sim" default="0"/>
+  <arg name="is_physical" default="1"/>
+  <arg name="use_imu" default="0"/>
+  <arg name="serial_port" default="/dev/ttyS0"/>
+
+  <arg name="control_cpu" default="0,1,2,3"/>
+  <arg name="vision_cpu" default="0,1,2,3"/>
+
+  <arg name="audio_device" default="plughw:2,0"/>
+  <arg name="playback_device" default="plughw:2,0"/>
+  <arg name="wake_phrase" default="hey robot"/>
+  <arg name="wake_aliases" default="hey robot,hi robot,hey robots,hi robots,hey robo,hi robo,hey robert,hi robert,robot,robots"/>
+  <arg name="wake_engine" default="cloud"/>
+  <arg name="stt_model" default="gpt-4o-transcribe"/>
+  <arg name="command_start_delay" default="0.15"/>
+  <arg name="wake_feedback_mode" default="beep"/>
+  <arg name="beep_duration" default="0.16"/>
+
+  <arg name="camera_backend" default="gscam_nodelet"/>
+  <arg name="tracker_method" default="yolo_nodelet"/>
+  <arg name="camera_width" default="360"/>
+  <arg name="camera_height" default="300"/>
+  <arg name="camera_fps" default="10"/>
+  <arg name="camera_sensor_id" default="0"/>
+  <arg name="camera_flip_method" default="0"/>
+  <arg name="yolo_model_path" default="/dingo_ws/src/dingo_AI/yolox/models/yolov8n.engine"/>
+  <arg name="yolo_publish_debug_image" default="0"/>
+  <arg name="follow_lock_delay" default="10.0"/>
+  <arg name="follow_publish_debug_info" default="0"/>
+
+  <arg name="step_duration" default="0.35"/>
+  <arg name="linear_axis_value" default="0.5"/>
+  <arg name="turn_axis_value" default="0.5"/>
+  <arg name="seconds_per_90_degrees" default="3.0"/>
+
+  <include file="$(find dingo_vision)/launch/dingo_vision.launch">
+    <arg name="is_sim" value="$(arg is_sim)"/>
+    <arg name="is_physical" value="$(arg is_physical)"/>
+    <arg name="use_imu" value="$(arg use_imu)"/>
+    <arg name="serial_port" value="$(arg serial_port)"/>
+    <arg name="use_joystick" value="0"/>
+    <arg name="use_keyboard" value="0"/>
+    <arg name="control_cpu" value="$(arg control_cpu)"/>
+    <arg name="vision_cpu" value="$(arg vision_cpu)"/>
+    <arg name="use_camera" value="1"/>
+    <arg name="camera_backend" value="$(arg camera_backend)"/>
+    <arg name="use_tracker" value="1"/>
+    <arg name="tracker_method" value="$(arg tracker_method)"/>
+    <arg name="use_follow" value="1"/>
+    <arg name="follow_enabled" value="0"/>
+    <arg name="follow_lock_delay" value="$(arg follow_lock_delay)"/>
+    <arg name="follow_publish_debug_info" value="$(arg follow_publish_debug_info)"/>
+    <arg name="follow_linear_axis_value" value="$(arg linear_axis_value)"/>
+    <arg name="follow_step_duration" value="$(arg step_duration)"/>
+    <arg name="camera_width" value="$(arg camera_width)"/>
+    <arg name="camera_height" value="$(arg camera_height)"/>
+    <arg name="camera_fps" value="$(arg camera_fps)"/>
+    <arg name="camera_sensor_id" value="$(arg camera_sensor_id)"/>
+    <arg name="camera_flip_method" value="$(arg camera_flip_method)"/>
+    <arg name="yolo_model_path" value="$(arg yolo_model_path)"/>
+    <arg name="yolo_publish_debug_image" value="$(arg yolo_publish_debug_image)"/>
+  </include>
+
+  <include file="$(find dingo_gpt)/launch/dingo_voice.launch">
+    <arg name="audio_device" value="$(arg audio_device)"/>
+    <arg name="playback_device" value="$(arg playback_device)"/>
+    <arg name="wake_phrase" value="$(arg wake_phrase)"/>
+    <arg name="wake_aliases" value="$(arg wake_aliases)"/>
+    <arg name="wake_engine" value="$(arg wake_engine)"/>
+    <arg name="stt_model" value="$(arg stt_model)"/>
+    <arg name="command_start_delay" value="$(arg command_start_delay)"/>
+    <arg name="wake_feedback_mode" value="$(arg wake_feedback_mode)"/>
+    <arg name="beep_duration" value="$(arg beep_duration)"/>
+    <arg name="camera_source" value="csi"/>
+  </include>
+
+  <node pkg="dingo_gpt" type="voice_command_joy_bridge.py" name="voice_command_joy_bridge" output="screen">
+    <param name="step_duration" value="$(arg step_duration)"/>
+    <param name="linear_axis_value" value="$(arg linear_axis_value)"/>
+    <param name="turn_axis_value" value="$(arg turn_axis_value)"/>
+    <param name="seconds_per_90_degrees" value="$(arg seconds_per_90_degrees)"/>
+  </node>
+</launch>

@@ -52,9 +52,11 @@ class IntentLLMNode(object):
 
         prompt = (
             "Classify a voice command for a quadruped robot. Return only JSON with keys: "
-            "category, action, direction, steps, raw_text. category must be exactly one of "
+            "category, action, direction, steps, degrees, raw_text. category must be exactly one of "
             "\"Describe the scene\", \"Control mode\", \"Unknown\". "
-            "Use Control mode for sit, stand up, move forward/backward/left/right, turn, stop. "
+            "Use Control mode for sit, stand up, move forward/backward/left/right, turn, stop, follow me, and stop following. "
+            "Use action follow for follow me/start tracking, and stop_follow for stop following. "
+            "For turn commands, extract degrees when the user says degrees; turn around means 180 degrees. "
             "Use Describe the scene when the user asks what the robot sees."
         )
         try:
@@ -74,15 +76,21 @@ class IntentLLMNode(object):
             parsed.setdefault("action", None)
             parsed.setdefault("direction", None)
             parsed.setdefault("steps", None)
+            parsed.setdefault("degrees", None)
             return parsed
         except Exception as exc:
             rospy.logerr("Intent: LLM classification failed: %s", exc)
-            return {"category": "Unknown", "action": None, "direction": None, "steps": None, "raw_text": text}
+            return {"category": "Unknown", "action": None, "direction": None, "steps": None, "degrees": None, "raw_text": text}
 
     def rule_classify(self, text):
         lower = text.lower()
         if any(phrase in lower for phrase in ["describe what you see", "what do you see", "describe the scene", "look around"]):
             return {"category": "Describe the scene", "action": "describe_scene", "direction": None, "steps": None, "raw_text": text}
+
+        if any(phrase in lower for phrase in ["stop following", "stop follow", "stop tracking", "cancel follow", "cancel following"]):
+            return {"category": "Control mode", "action": "stop_follow", "direction": None, "steps": None, "degrees": None, "raw_text": text}
+        if any(phrase in lower for phrase in ["follow me", "start following", "start follow", "track me", "start tracking", "follow person"]):
+            return {"category": "Control mode", "action": "follow", "direction": None, "steps": None, "degrees": None, "raw_text": text}
 
         action = None
         direction = None
@@ -109,12 +117,29 @@ class IntentLLMNode(object):
                 "action": action,
                 "direction": direction,
                 "steps": self.extract_steps(lower),
+                "degrees": self.extract_degrees(lower) if action == "turn" else None,
                 "raw_text": text,
             }
         return None
 
-    def extract_steps(self, lower):
-        words = {
+    def extract_degrees(self, lower):
+        if "turn around" in lower or "turnaround" in lower:
+            return 180
+
+        match = re.search(r"\b(\d{1,3})\s*(degree|degrees|deg)\b", lower)
+        if match:
+            return int(match.group(1))
+
+        degree_match = re.search(r"\b([a-z -]+)\s+(degree|degrees)\b", lower)
+        if degree_match:
+            value = self.words_to_number(degree_match.group(1).split())
+            if value is not None:
+                return value
+        return None
+
+    def words_to_number(self, words):
+        values = {
+            "zero": 0,
             "one": 1,
             "two": 2,
             "three": 3,
@@ -125,12 +150,56 @@ class IntentLLMNode(object):
             "eight": 8,
             "nine": 9,
             "ten": 10,
+            "eleven": 11,
+            "twelve": 12,
+            "thirteen": 13,
+            "fourteen": 14,
+            "fifteen": 15,
+            "sixteen": 16,
+            "seventeen": 17,
+            "eighteen": 18,
+            "nineteen": 19,
+            "twenty": 20,
+            "thirty": 30,
+            "forty": 40,
+            "fifty": 50,
+            "sixty": 60,
+            "seventy": 70,
+            "eighty": 80,
+            "ninety": 90,
         }
+        current = 0
+        found = False
+        for word in words:
+            word = word.strip("-")
+            if word in ["turn", "left", "right", "around", "degrees", "degree"]:
+                current = 0
+                found = False
+                continue
+            if word == "hundred" and current:
+                current *= 100
+                found = True
+                continue
+            if word in values:
+                current += values[word]
+                found = True
+        if not found:
+            return None
+        return current
+
+    def extract_steps(self, lower):
+        range_match = re.search(r"\b(\d+)\s*(?:-|to)\s*(\d+)\s+(step|steps)\b", lower)
+        if range_match:
+            return int(range_match.group(2))
+
         match = re.search(r"\b(\d+)\s+(step|steps)\b", lower)
         if match:
             return int(match.group(1))
-        for word, value in words.items():
-            if re.search(r"\b%s\s+(step|steps)\b" % word, lower):
+
+        word_match = re.search(r"\b([a-z][a-z -]*?)\s+(step|steps)\b", lower)
+        if word_match:
+            value = self.words_to_number(word_match.group(1).replace("-", " ").split())
+            if value is not None:
                 return value
         return None
 

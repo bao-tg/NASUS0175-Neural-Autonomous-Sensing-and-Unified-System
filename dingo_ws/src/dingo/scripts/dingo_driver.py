@@ -45,6 +45,10 @@ class DingoDriver:
         self.joint_command_sub = rospy.Subscriber("/joint_space_cmd", JointSpace, self.run_joint_space_command)
         self.task_command_sub = rospy.Subscriber("/task_space_cmd", TaskSpace, self.run_task_space_command)
         self.estop_status_sub = rospy.Subscriber("/emergency_stop_status", Bool, self.update_emergency_stop_status)
+        self.imu_yaw_pub = rospy.Publisher("/dingo/imu/yaw", Float64, queue_size=10)
+        self.imu_pitch_pub = rospy.Publisher("/dingo/imu/pitch", Float64, queue_size=10)
+        self.imu_roll_pub = rospy.Publisher("/dingo/imu/roll", Float64, queue_size=10)
+        self.imu_active_pub = rospy.Publisher("/dingo/imu/active", Float64, queue_size=10)
         self.external_commands_enabled = 0
 
         if self.is_sim:
@@ -128,13 +132,7 @@ class DingoDriver:
                     else:
                         rospy.logerr("Received Request to enable external control, but e-stop is pressed so the request has been ignored. Please release e-stop and try again")
                 
-                # Read imu data. Orientation will be None if no data was available
-                # rospy.loginfo(imu.read_orientation())
-                self.state.euler_orientation = (
-                    self.imu.read_orientation() if self.use_imu else np.array([0, 0, 0])
-                )
-                [yaw,pitch,roll] = self.state.euler_orientation
-                # print('Yaw: ',np.round(yaw,2),'Pitch: ',np.round(pitch,2),'Roll: ',np.round(roll,2))
+                self.update_imu_orientation(command)
                 # Step the controller forward by dt
                 self.controller.run(self.state, command)
 
@@ -181,6 +179,36 @@ class DingoDriver:
                         break
                     self.rate.sleep()
     
+    def update_imu_orientation(self, command):
+        if getattr(command, "imu_deactivate_event", 0) == 1:
+            self.state.imu_active = 0
+            self.state.imu_zero_orientation = np.array([0.0, 0.0, 0.0])
+            self.state.euler_orientation = np.array([0.0, 0.0, 0.0])
+            rospy.loginfo("IMU compensation deactivated")
+
+        if getattr(command, "imu_activate_event", 0) == 1:
+            if not self.use_imu:
+                rospy.logwarn("IMU activation requested, but use_imu is disabled")
+            else:
+                self.state.imu_zero_orientation = np.array(self.imu.read_orientation())
+                self.state.imu_active = 1
+                self.state.euler_orientation = np.array([0.0, 0.0, 0.0])
+                rospy.loginfo("IMU compensation activated and zeroed")
+
+        if self.use_imu and self.state.imu_active:
+            self.state.euler_orientation = self.state.imu_zero_orientation - np.array(self.imu.read_orientation())
+        else:
+            self.state.euler_orientation = np.array([0.0, 0.0, 0.0])
+
+        self.publish_imu_debug()
+
+    def publish_imu_debug(self):
+        yaw, pitch, roll = self.state.euler_orientation
+        self.imu_yaw_pub.publish(Float64(yaw))
+        self.imu_pitch_pub.publish(Float64(pitch))
+        self.imu_roll_pub.publish(Float64(roll))
+        self.imu_active_pub.publish(Float64(1.0 if self.state.imu_active else 0.0))
+
     def update_emergency_stop_status(self, msg):
         if msg.data == 1:
             self.state.currently_estopped = 1
@@ -189,43 +217,43 @@ class DingoDriver:
         return
 
     def run_task_space_command(self, msg):
-        if self.external_commands_enabled == 1 and self.currently_estopped == 0:
-            foot_locations = np.zeros((3,4))
-            j = 0
-            for i in 3:
-                foot_locations[i] = [msg.FR_foot[j], msg.FL_foot[j], msg.RR_foot[j], msg.RL_foot[j]]
-                j = j+1
+        if self.external_commands_enabled == 1 and self.state.currently_estopped == 0:
+            foot_locations = np.array([
+                [msg.FR_foot.x, msg.FL_foot.x, msg.RR_foot.x, msg.RL_foot.x],
+                [msg.FR_foot.y, msg.FL_foot.y, msg.RR_foot.y, msg.RL_foot.y],
+                [msg.FR_foot.z, msg.FL_foot.z, msg.RR_foot.z, msg.RL_foot.z],
+            ])
             print(foot_locations)
             joint_angles = self.controller.inverse_kinematics(foot_locations, self.config)
             if self.is_sim:
-                self.publish_joints_to_sim(self, joint_angles)
+                self.publish_joints_to_sim(joint_angles)
             
             if self.is_physical:
                 self.hardware_interface.set_actuator_postions(joint_angles)
             
         elif self.external_commands_enabled == 0:
             rospy.logerr("ERROR: Robot not accepting commands. Please deactivate manual control before sending control commands")
-        elif self.currently_estopped == 1:
+        elif self.state.currently_estopped == 1:
             rospy.logerr("ERROR: Robot currently estopped. Please release before trying to send commands")
 
     def run_joint_space_command(self, msg):
-        if self.external_commands_enabled == 1 and self.currently_estopped == 0:
-            joint_angles = np.zeros((3,4))
-            j = 0
-            for i in 3:
-                joint_angles[i] = [msg.FR_foot[j], msg.FL_foot[j], msg.RR_foot[j], msg.RL_foot[j]]
-                j = j+1
+        if self.external_commands_enabled == 1 and self.state.currently_estopped == 0:
+            joint_angles = np.array([
+                [msg.FR_foot.theta1, msg.FL_foot.theta1, msg.RR_foot.theta1, msg.RL_foot.theta1],
+                [msg.FR_foot.theta2, msg.FL_foot.theta2, msg.RR_foot.theta2, msg.RL_foot.theta2],
+                [msg.FR_foot.theta3, msg.FL_foot.theta3, msg.RR_foot.theta3, msg.RL_foot.theta3],
+            ])
             print(joint_angles)
 
             if self.is_sim:
-                self.publish_joints_to_sim(self, joint_angles)
+                self.publish_joints_to_sim(joint_angles)
             
             if self.is_physical:
                 self.hardware_interface.set_actuator_postions(joint_angles)
             
         elif self.external_commands_enabled == 0:
             rospy.logerr("ERROR: Robot not accepting commands. Please deactivate manual control before sending control commands")
-        elif self.currently_estopped == 1:
+        elif self.state.currently_estopped == 1:
             rospy.logerr("ERROR: Robot currently estopped. Please release before trying to send commands")
     
     def publish_joints_to_sim(self, joint_angles):

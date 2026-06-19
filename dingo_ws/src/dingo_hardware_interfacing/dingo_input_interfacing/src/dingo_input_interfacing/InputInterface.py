@@ -1,5 +1,6 @@
 import rospy
 import numpy as np
+import time
 from dingo_control.State import BehaviorState, State
 from dingo_control.Command import Command
 from dingo_utilities.Utilities import deadband, clipped_first_order_filter
@@ -29,6 +30,11 @@ class InputInterface:
         self.new_command = Command()
         self.developing_command = Command()
 
+        self.debounce_time = 0.3  # seconds
+        self.last_gait_toggle_time = 0
+        self.last_hop_toggle_time = 0
+        self.last_joystick_toggle_time = 0
+
     def _button(self, msg, index):
         return msg.buttons[index] if len(msg.buttons) > index else 0
 
@@ -41,7 +47,13 @@ class InputInterface:
         # Check if requesting a state transition to trotting, or from trotting to resting
         gait_toggle = self._button(msg, 5) #R1
         if self.trot_event != 1:
-            self.trot_event = (gait_toggle == 1 and self.previous_gait_toggle == 0)
+            now = time.time()
+            if (gait_toggle == 1 and self.previous_gait_toggle == 0
+        and
+            (now - self.last_gait_toggle_time) > self.debounce_time):
+                    self.trot_event = 1
+                    self.last_gait_toggle_time = now
+            # self.trot_event = (gait_toggle == 1 and self.previous_gait_toggle == 0)
 
         # Check if requesting a state transition to hopping, from trotting or resting
         hop_toggle = self._button(msg, 0) #x

@@ -31,7 +31,7 @@ class Configuration:
 
         #################### IMU STABILISATION PID ####################
         # PID output is an additional roll/pitch compensation angle [rad].
-        self.imu_stabilization_kp = 0.6
+        self.imu_stabilization_kp = 0.7
         self.imu_stabilization_ki = 0.001
         self.imu_stabilization_kd = 0.005
         self.imu_stabilization_deadband = m.radians(2)

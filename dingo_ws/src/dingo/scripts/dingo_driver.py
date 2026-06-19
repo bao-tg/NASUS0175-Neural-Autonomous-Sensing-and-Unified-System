@@ -30,7 +30,8 @@ from std_msgs.msg import Bool
 
 if is_physical:
     from dingo_servo_interfacing.HardwareInterface import HardwareInterface
-    from dingo_peripheral_interfacing.IMU import IMU
+    if use_imu:
+        from dingo_peripheral_interfacing.IMU import IMU
     from dingo_control.Config import Leg_linkage
 
 class DingoDriver:
@@ -48,7 +49,14 @@ class DingoDriver:
         self.imu_yaw_pub = rospy.Publisher("/dingo/imu/yaw", Float64, queue_size=10)
         self.imu_pitch_pub = rospy.Publisher("/dingo/imu/pitch", Float64, queue_size=10)
         self.imu_roll_pub = rospy.Publisher("/dingo/imu/roll", Float64, queue_size=10)
+        self.imu_raw_yaw_pub = rospy.Publisher("/dingo/imu/raw_yaw", Float64, queue_size=10)
+        self.imu_raw_pitch_pub = rospy.Publisher("/dingo/imu/raw_pitch", Float64, queue_size=10)
+        self.imu_raw_roll_pub = rospy.Publisher("/dingo/imu/raw_roll", Float64, queue_size=10)
+        self.imu_filtered_yaw_pub = rospy.Publisher("/dingo/imu/filtered_yaw", Float64, queue_size=10)
+        self.imu_filtered_pitch_pub = rospy.Publisher("/dingo/imu/filtered_pitch", Float64, queue_size=10)
+        self.imu_filtered_roll_pub = rospy.Publisher("/dingo/imu/filtered_roll", Float64, queue_size=10)
         self.imu_active_pub = rospy.Publisher("/dingo/imu/active", Float64, queue_size=10)
+        self.imu_filter_alpha = 0.85
         self.external_commands_enabled = 0
 
         if self.is_sim:
@@ -183,6 +191,7 @@ class DingoDriver:
         if getattr(command, "imu_deactivate_event", 0) == 1:
             self.state.imu_active = 0
             self.state.imu_zero_orientation = np.array([0.0, 0.0, 0.0])
+            self.state.raw_euler_orientation = np.array([0.0, 0.0, 0.0])
             self.state.euler_orientation = np.array([0.0, 0.0, 0.0])
             rospy.loginfo("IMU compensation deactivated")
 
@@ -192,21 +201,41 @@ class DingoDriver:
             else:
                 self.state.imu_zero_orientation = np.array(self.imu.read_orientation())
                 self.state.imu_active = 1
+                self.state.raw_euler_orientation = np.array([0.0, 0.0, 0.0])
                 self.state.euler_orientation = np.array([0.0, 0.0, 0.0])
                 rospy.loginfo("IMU compensation activated and zeroed")
 
         if self.use_imu and self.state.imu_active:
-            self.state.euler_orientation = self.state.imu_zero_orientation - np.array(self.imu.read_orientation())
+            raw_orientation = self.state.imu_zero_orientation - np.array(self.imu.read_orientation())
+            raw_orientation[1] *= -1.0
+            raw_orientation[2] *= -1.0
+            self.state.raw_euler_orientation = raw_orientation
+
+            filtered_orientation = np.array(self.state.euler_orientation)
+            filtered_orientation[0] = raw_orientation[0]
+            filtered_orientation[1] = self.imu_filter_alpha * filtered_orientation[1] + (1.0 - self.imu_filter_alpha) * raw_orientation[1]
+            filtered_orientation[2] = self.imu_filter_alpha * filtered_orientation[2] + (1.0 - self.imu_filter_alpha) * raw_orientation[2]
+            self.state.euler_orientation = filtered_orientation
         else:
+            self.state.raw_euler_orientation = np.array([0.0, 0.0, 0.0])
             self.state.euler_orientation = np.array([0.0, 0.0, 0.0])
 
         self.publish_imu_debug()
 
     def publish_imu_debug(self):
-        yaw, pitch, roll = self.state.euler_orientation
-        self.imu_yaw_pub.publish(Float64(yaw))
-        self.imu_pitch_pub.publish(Float64(pitch))
-        self.imu_roll_pub.publish(Float64(roll))
+        raw_yaw, raw_pitch, raw_roll = self.state.raw_euler_orientation
+        filtered_yaw, filtered_pitch, filtered_roll = self.state.euler_orientation
+
+        self.imu_raw_yaw_pub.publish(Float64(raw_yaw))
+        self.imu_raw_pitch_pub.publish(Float64(raw_pitch))
+        self.imu_raw_roll_pub.publish(Float64(raw_roll))
+        self.imu_filtered_yaw_pub.publish(Float64(filtered_yaw))
+        self.imu_filtered_pitch_pub.publish(Float64(filtered_pitch))
+        self.imu_filtered_roll_pub.publish(Float64(filtered_roll))
+
+        self.imu_yaw_pub.publish(Float64(filtered_yaw))
+        self.imu_pitch_pub.publish(Float64(filtered_pitch))
+        self.imu_roll_pub.publish(Float64(filtered_roll))
         self.imu_active_pub.publish(Float64(1.0 if self.state.imu_active else 0.0))
 
     def update_emergency_stop_status(self, msg):

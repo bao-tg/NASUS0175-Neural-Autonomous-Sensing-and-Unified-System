@@ -4,7 +4,7 @@
 # roslaunch dingo dingo.launch is_physical:=1 is_sim:=0 use_keyboard:=1 use_joystick:=0
 # Configuration
 IMAGE_NAME="dingo-ros:base"
-CONTAINER_NAME="dingo_devdan_test"
+CONTAINER_NAME="dingo_devdan_test10"
 HOST_DIR="$HOME/Documents/DingoQuadruped/dingo_ws"
 CONTAINER_DIR="/dingo_ws"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

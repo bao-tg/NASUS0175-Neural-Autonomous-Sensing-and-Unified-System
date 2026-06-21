@@ -4,7 +4,7 @@
     <arg name="use_joystick" default="0"/>
     <arg name="use_keyboard" default="0"/>
     <arg name="serial_port" default="/dev/ttyS0"/>
-    <arg name="use_imu" default="0"/>
+    <arg name="use_imu" default="1"/>
 
     <arg name="control_cpu" default="0,1,2,3" doc="CPU cores reserved for timing-sensitive control nodes."/>
     <arg name="vision_cpu" default="0,1,2,3" doc="CPU cores for camera, tracker, keyboard, joystick, and other non-control nodes."/>

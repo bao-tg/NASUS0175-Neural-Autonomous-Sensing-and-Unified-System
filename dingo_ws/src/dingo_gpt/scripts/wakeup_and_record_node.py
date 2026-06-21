@@ -71,8 +71,9 @@ class WakeupAndRecordNode(object):
         rospy.loginfo("Wake: cloud wake detection active for phrase '%s'", self.wake_phrase)
         rospy.logwarn("Wake: cloud mode sends short audio chunks to OpenAI. Use Picovoice later for offline always-on wake word.")
         while not rospy.is_shutdown():
-            wake_path = self.record_fixed_wav(self.chunk_seconds, "dingo_wake_")
+            wake_path = None
             try:
+                wake_path = self.record_fixed_wav(self.chunk_seconds, "dingo_wake_")
                 rms = self.wav_rms(wake_path)
                 if rms < self.wake_min_rms:
                     rospy.loginfo("Wake: skipped quiet chunk rms=%s", rms)
@@ -89,13 +90,14 @@ class WakeupAndRecordNode(object):
                     else:
                         self.handle_wake()
             except Exception as exc:
-                rospy.logerr("Wake: transcription failed: %s", exc)
+                rospy.logerr("Wake: loop failed: %s", exc)
                 time.sleep(1.0)
             finally:
-                try:
-                    os.remove(wake_path)
-                except OSError:
-                    pass
+                if wake_path:
+                    try:
+                        os.remove(wake_path)
+                    except OSError:
+                        pass
 
 
     def is_wake_phrase(self, text):
@@ -186,7 +188,14 @@ class WakeupAndRecordNode(object):
             str(int(seconds)),
             path,
         ]
-        subprocess.check_call(cmd)
+        try:
+            subprocess.check_call(cmd)
+        except FileNotFoundError:
+            rospy.logerr("Wake: arecord is not installed in this container. Install alsa-utils or rebuild the image.")
+            raise
+        except subprocess.CalledProcessError as exc:
+            rospy.logerr("Wake: arecord failed for device %s with exit code %s", self.audio_device, exc.returncode)
+            raise
         return path
 
     def record_until_silence(self):

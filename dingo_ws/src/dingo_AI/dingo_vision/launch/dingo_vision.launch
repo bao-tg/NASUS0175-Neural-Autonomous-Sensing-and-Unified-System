@@ -1,10 +1,10 @@
 <launch>
     <arg name="is_sim" default="0"/>
     <arg name="is_physical" default="1"/>
-    <arg name="use_joystick" default="0"/>
+    <arg name="use_joystick" default="1"/>
     <arg name="use_keyboard" default="0"/>
     <arg name="serial_port" default="/dev/ttyS0"/>
-    <arg name="use_imu" default="0"/>
+    <arg name="use_imu" default="1"/>
 
     <arg name="control_cpu" default="0,1,2,3" doc="CPU cores reserved for timing-sensitive control nodes."/>
     <arg name="vision_cpu" default="0,1,2,3" doc="CPU cores for camera, tracker, keyboard, joystick, and other non-control nodes."/>
@@ -22,6 +22,20 @@
     <arg name="tracker_lk_max_level" default="3"/>
     <arg name="tracker_max_width" default="640"/>
     <arg name="plot_frequency" default="100"/>
+
+    <arg name="joy_dev" default="/dev/input/js0"/>
+    <arg name="joy_axis_x" default="1"/>
+    <arg name="joy_axis_y" default="0"/>
+    <arg name="joy_axis_yaw" default="2"/>
+    <arg name="joy_axis_pitch" default="5"/>
+    <arg name="joy_axis_height" default="7"/>
+    <arg name="joy_axis_roll" default="6"/>
+    <arg name="joy_button_trot" default="5"/>
+    <arg name="joy_button_hop" default="1"/>
+    <arg name="joy_button_activate" default="4"/>
+    <arg name="joy_button_imu_activate" default="11"/>
+    <arg name="joy_button_imu_deactivate" default="12"/>
+    <arg name="joy_button_home" default="0"/>
 
     <arg name="use_follow" default="1"/>
     <arg name="follow_enabled" default="1"/>
@@ -41,14 +55,17 @@
     <arg name="follow_enable_appearance_reacquire" default="1"/>
     <arg name="follow_appearance_match_threshold" default="0.55"/>
     <arg name="follow_appearance_update_alpha" default="0.03"/>
-    <arg name="follow_joy_topic" default="joy"/>
+    <arg name="follow_joy_topic" default="/joy/follow"/>
     <arg name="follow_joy_rate_hz" default="30.0"/>
     <arg name="follow_linear_axis_value" default="0.5"/>
+    <arg name="follow_linear_axis_index" default="1"/>
     <arg name="follow_step_duration" default="0.35"/>
     <arg name="follow_yaw_duration" default="0.45"/>
     <arg name="follow_button_pulse_duration" default="0.18"/>
+    <arg name="follow_button_trot" default="5"/>
     <arg name="follow_yaw_axis_sign" default="-1.0"/>
     <arg name="follow_yaw_axis_scale" default="5"/>
+    <arg name="follow_yaw_axis_index" default="2"/>
     <arg name="follow_return_to_rest_after_command" default="1"/>
     <arg name="follow_publish_debug_info" default="0"/>
 
@@ -177,11 +194,14 @@
             <param name="joy_topic" value="$(arg follow_joy_topic)"/>
             <param name="joy_rate_hz" type="double" value="$(arg follow_joy_rate_hz)"/>
             <param name="linear_axis_value" type="double" value="$(arg follow_linear_axis_value)"/>
+            <param name="linear_axis_index" type="int" value="$(arg follow_linear_axis_index)"/>
             <param name="step_duration" type="double" value="$(arg follow_step_duration)"/>
             <param name="yaw_duration" type="double" value="$(arg follow_yaw_duration)"/>
             <param name="button_pulse_duration" type="double" value="$(arg follow_button_pulse_duration)"/>
+            <param name="button_trot" type="int" value="$(arg follow_button_trot)"/>
             <param name="yaw_axis_sign" type="double" value="$(arg follow_yaw_axis_sign)"/>
             <param name="yaw_axis_scale" type="double" value="$(arg follow_yaw_axis_scale)"/>
+            <param name="yaw_axis_index" type="int" value="$(arg follow_yaw_axis_index)"/>
             <param name="return_to_rest_after_command" type="bool" value="$(arg follow_return_to_rest_after_command)"/>
             <param name="publish_debug_info" type="bool" value="$(arg follow_publish_debug_info)"/>
         </node>
@@ -189,14 +209,39 @@
 
     <group if="$(arg use_joystick)">
         <node pkg="joy" type="joy_node" name="JOYSTICK" launch-prefix="taskset -c $(arg vision_cpu)">
+            <param name="dev" value="$(arg joy_dev)"/>
             <param name="autorepeat_rate" value="30"/>
+            <remap from="joy" to="/joy/controller"/>
         </node>
     </group>
 
     <group if="$(arg use_keyboard)">
-        <node pkg="dingo_input_interfacing" type="Keyboard.py" name="keyboard_input_listener" launch-prefix="taskset -c $(arg vision_cpu)" output="screen"/>
+        <node pkg="dingo_input_interfacing" type="Keyboard.py" name="keyboard_input_listener" launch-prefix="taskset -c $(arg vision_cpu)" output="screen">
+            <remap from="joy" to="/joy/controller"/>
+        </node>
     </group>
 
+    <node pkg="dingo_input_interfacing" type="JoyMux.py" name="joy_mux" launch-prefix="taskset -c $(arg vision_cpu)" output="screen">
+        <param name="controller_topic" value="/joy/controller"/>
+        <param name="voice_topic" value="/joy/voice"/>
+        <param name="follow_topic" value="/joy/follow"/>
+        <param name="output_topic" value="joy"/>
+    </node>
+
     <node pkg="dingo" type="dingo_driver.py"
-          name="dingo" args="$(arg is_sim) $(arg is_physical) $(arg use_imu)" launch-prefix="taskset -c $(arg control_cpu)" output="screen"/>
+          name="dingo" args="$(arg is_sim) $(arg is_physical) $(arg use_imu)" launch-prefix="taskset -c $(arg control_cpu)" output="screen">
+        <param name="joy_topic" value="joy"/>
+        <param name="joy_axis_x" value="$(arg joy_axis_x)"/>
+        <param name="joy_axis_y" value="$(arg joy_axis_y)"/>
+        <param name="joy_axis_yaw" value="$(arg joy_axis_yaw)"/>
+        <param name="joy_axis_pitch" value="$(arg joy_axis_pitch)"/>
+        <param name="joy_axis_height" value="$(arg joy_axis_height)"/>
+        <param name="joy_axis_roll" value="$(arg joy_axis_roll)"/>
+        <param name="joy_button_trot" value="$(arg joy_button_trot)"/>
+        <param name="joy_button_hop" value="$(arg joy_button_hop)"/>
+        <param name="joy_button_activate" value="$(arg joy_button_activate)"/>
+        <param name="joy_button_imu_activate" value="$(arg joy_button_imu_activate)"/>
+        <param name="joy_button_imu_deactivate" value="$(arg joy_button_imu_deactivate)"/>
+        <param name="joy_button_home" value="$(arg joy_button_home)"/>
+    </node>
 </launch>

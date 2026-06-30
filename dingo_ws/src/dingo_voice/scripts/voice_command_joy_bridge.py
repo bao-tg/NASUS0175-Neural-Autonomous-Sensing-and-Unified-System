@@ -25,11 +25,17 @@ class VoiceCommandJoyBridge(object):
         self.sit_duration = float(rospy.get_param("~sit_duration", 2.0))
         self.button_pulse_duration = float(rospy.get_param("~button_pulse_duration", 0.18))
         self.default_steps = int(rospy.get_param("~default_steps", 1))
+        self.joy_topic = rospy.get_param("~joy_topic", "/joy/voice")
+        self.axis_x = int(rospy.get_param("~joy_axis_x", 1))
+        self.axis_y = int(rospy.get_param("~joy_axis_y", 0))
+        self.axis_yaw = int(rospy.get_param("~joy_axis_yaw", 2))
+        self.axis_height = int(rospy.get_param("~joy_axis_height", 7))
+        self.button_trot = int(rospy.get_param("~joy_button_trot", 5))
         self.max_steps = int(rospy.get_param("~max_steps", 30))
         self.step_limit_message = "Don't try to move over 30 steps to prevent user input the edge case"
         self.speak_ack = rospy.get_param("~speak_ack", True)
 
-        self.pub_joy = rospy.Publisher("joy", Joy, queue_size=10)
+        self.pub_joy = rospy.Publisher(self.joy_topic, Joy, queue_size=10)
         self.pub_tts = rospy.Publisher("/tts_input", String, queue_size=10)
         self.pub_follow_enable = rospy.Publisher("/person_follow/enable", Bool, queue_size=1, latch=True)
         rospy.Subscriber("/robot_command", String, self.command_callback, queue_size=10)
@@ -112,13 +118,13 @@ class VoiceCommandJoyBridge(object):
 
         axes = self.neutral_axes()
         if direction == "forward":
-            axes[1] = self.linear_axis_value
+            axes[self.axis_x] = self.linear_axis_value
         elif direction == "backward":
-            axes[1] = -self.linear_axis_value
+            axes[self.axis_x] = -self.linear_axis_value
         elif direction == "left":
-            axes[0] = self.linear_axis_value
+            axes[self.axis_y] = self.linear_axis_value
         elif direction == "right":
-            axes[0] = -self.linear_axis_value
+            axes[self.axis_y] = -self.linear_axis_value
 
         self.ensure_trot()
         self.hold_axes(axes, max(steps, 1) * self.step_duration)
@@ -132,14 +138,14 @@ class VoiceCommandJoyBridge(object):
         axes = self.neutral_axes()
         duration = self.turn_duration
         if direction == "right":
-            axes[3] = -self.turn_axis_value
+            axes[self.axis_yaw] = -self.turn_axis_value
         elif direction == "left":
-            axes[3] = self.turn_axis_value
+            axes[self.axis_yaw] = self.turn_axis_value
         elif "around" in raw_text.lower():
-            axes[3] = self.turn_axis_value
+            axes[self.axis_yaw] = self.turn_axis_value
             degrees = degrees or 180
         else:
-            axes[3] = self.turn_axis_value
+            axes[self.axis_yaw] = self.turn_axis_value
 
         if degrees:
             duration = max(0.1, (float(degrees) / 90.0) * self.seconds_per_90_degrees)
@@ -156,7 +162,7 @@ class VoiceCommandJoyBridge(object):
 
     def run_sit(self):
         axes = self.neutral_axes()
-        axes[7] = -1.0
+        axes[self.axis_height] = -1.0
         self.hold_axes(axes, self.sit_duration)
         self.publish_neutral()
         if self.speak_ack:
@@ -164,7 +170,7 @@ class VoiceCommandJoyBridge(object):
 
     def run_stand(self):
         axes = self.neutral_axes()
-        axes[7] = 1.0
+        axes[self.axis_height] = 1.0
         self.hold_axes(axes, self.sit_duration)
         self.publish_neutral()
         if self.speak_ack:
@@ -191,13 +197,13 @@ class VoiceCommandJoyBridge(object):
 
     def ensure_trot(self):
         if not self.in_trot:
-            self.pulse_button(5)
+            self.pulse_button(self.button_trot)
             self.in_trot = True
             rospy.sleep(0.15)
 
     def ensure_rest(self):
         if self.in_trot:
-            self.pulse_button(5)
+            self.pulse_button(self.button_trot)
             self.in_trot = False
             rospy.sleep(0.15)
 
@@ -253,5 +259,5 @@ class VoiceCommandJoyBridge(object):
 if __name__ == "__main__":
     rospy.init_node("voice_command_joy_bridge")
     VoiceCommandJoyBridge()
-    rospy.loginfo("Voice bridge: listening on /robot_command and publishing Joy on joy")
+    rospy.loginfo("Voice bridge: listening on /robot_command and publishing Joy")
     rospy.spin()

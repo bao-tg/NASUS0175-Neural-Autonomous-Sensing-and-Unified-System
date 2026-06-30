@@ -1,26 +1,59 @@
 <launch>
     <arg name="is_sim" default="0"/>
     <arg name="is_physical" default="1"/>
-    <arg name="use_joystick" default="0"/>
-    <arg name="use_keyboard" default="1"/>
+    <arg name="use_joystick" default="1"/>
+    <arg name="use_keyboard" default="0"/>
     <arg name="serial_port" default="/dev/ttyS0"/>
-    <arg name="use_imu" default="0"/>
-    <!-- If want to use the joystick, launch joystick node -->
+    <arg name="use_imu" default="1"/>
+
+    <arg name="joy_dev" default="/dev/input/js0"/>
+    <arg name="joy_axis_x" default="1"/>
+    <arg name="joy_axis_y" default="0"/>
+    <arg name="joy_axis_yaw" default="2"/>
+    <arg name="joy_axis_pitch" default="5"/>
+    <arg name="joy_axis_height" default="7"/>
+    <arg name="joy_axis_roll" default="6"/>
+    <arg name="joy_button_trot" default="5"/>
+    <arg name="joy_button_hop" default="1"/>
+    <arg name="joy_button_activate" default="4"/>
+    <arg name="joy_button_imu_activate" default="11"/>
+    <arg name="joy_button_imu_deactivate" default="12"/>
+    <arg name="joy_button_home" default="0"/>
+
+    <node pkg="dingo_input_interfacing" type="JoyMux.py" name="joy_mux" output="screen">
+        <param name="controller_topic" value="/joy/controller"/>
+        <param name="voice_topic" value="/joy/voice"/>
+        <param name="follow_topic" value="/joy/follow"/>
+        <param name="output_topic" value="joy"/>
+    </node>
+
     <group if="$(arg use_joystick)">
         <node pkg="joy" type="joy_node" name="JOYSTICK">
+            <param name="dev" value="$(arg joy_dev)"/>
             <param name="autorepeat_rate" value="30"/>
-            <!-- <param name="joy_node/dev" value="/dev/input/js0"/>
-            <arg name="coalesce_interval" value="0.02"/>
-            -->
+            <remap from="joy" to="/joy/controller"/>
         </node>
     </group>
 
     <group if="$(arg use_keyboard)">
-        <node pkg = "dingo_input_interfacing" type = "Keyboard.py" name = "keyboard_input_listener" output="screen"></node>
+        <node pkg="dingo_input_interfacing" type="Keyboard.py" name="keyboard_input_listener" output="screen">
+            <remap from="joy" to="/joy/controller"/>
+        </node>
     </group>
-    
-    <!-- Dingo Driver -->
-    <node pkg="dingo" type="dingo_driver.py"
-        name="dingo" args="$(arg is_sim) $(arg is_physical) $(arg use_imu)" output="screen"/>
-</launch>
 
+    <node pkg="dingo" type="dingo_driver.py" name="dingo" args="$(arg is_sim) $(arg is_physical) $(arg use_imu)" output="screen">
+        <param name="joy_topic" value="joy"/>
+        <param name="joy_axis_x" value="$(arg joy_axis_x)"/>
+        <param name="joy_axis_y" value="$(arg joy_axis_y)"/>
+        <param name="joy_axis_yaw" value="$(arg joy_axis_yaw)"/>
+        <param name="joy_axis_pitch" value="$(arg joy_axis_pitch)"/>
+        <param name="joy_axis_height" value="$(arg joy_axis_height)"/>
+        <param name="joy_axis_roll" value="$(arg joy_axis_roll)"/>
+        <param name="joy_button_trot" value="$(arg joy_button_trot)"/>
+        <param name="joy_button_hop" value="$(arg joy_button_hop)"/>
+        <param name="joy_button_activate" value="$(arg joy_button_activate)"/>
+        <param name="joy_button_imu_activate" value="$(arg joy_button_imu_activate)"/>
+        <param name="joy_button_imu_deactivate" value="$(arg joy_button_imu_deactivate)"/>
+        <param name="joy_button_home" value="$(arg joy_button_home)"/>
+    </node>
+</launch>

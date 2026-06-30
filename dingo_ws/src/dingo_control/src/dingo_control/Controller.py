@@ -178,14 +178,45 @@ class Controller:
         elif command.hop_event:
             state.behavior_state = self.hop_transition_mapping[state.behavior_state]
 
+        if command.home_event:
+            rospy.loginfo("HOME pressed - resetting to default stance")
+            command.pitch = 0.0
+            command.roll = 0.0
+            command.horizontal_velocity = np.array([0.0, 0.0])
+            command.yaw_rate = 0.0
+            state.pitch = 0.0
+            state.roll = 0.0
+            state.ticks = 0
+            state.foot_locations = (
+                self.config.default_stance
+                + np.array([0, 0, command.height])[:, np.newaxis]
+            )
+            self.smoothed_yaw = 0.0
+            self.reset_imu_stabilization_pid()
+
         if previous_state != state.behavior_state:
             rospy.loginfo("State changed from %s to %s", str(previous_state), str(state.behavior_state))
 
         if state.behavior_state == BehaviorState.TROT:
-            state.foot_locations, contact_modes = self.step_gait(
-                state,
-                command,
+            has_velocity_input = (
+                np.linalg.norm(command.horizontal_velocity) > 0.05
+                or abs(command.yaw_rate) > 0.05
             )
+
+            if has_velocity_input:
+                state.foot_locations, contact_modes = self.step_gait(
+                    state,
+                    command,
+                )
+            else:
+                # Idle: hold default stance AND reset the gait phase counter so
+                # that the next time the stick is pushed, the gait restarts cleanly
+                # at phase 0 (instead of resuming mid-swing from a stale tick count).
+                state.ticks = 0
+                state.foot_locations = (
+                    self.config.default_stance
+                    + np.array([0, 0, command.height])[:, np.newaxis]
+                )
 
             # Apply the desired body rotation
             rotated_foot_locations = (
@@ -196,16 +227,17 @@ class Controller:
             )
 
             # Construct foot rotation matrix to compensate for body tilt
-            yaw,pitch,roll = state.euler_orientation
-            #print('Yaw: ',np.round(yaw),'Pitch: ',np.round(pitch),'Roll: ',np.round(roll))
-            correction_factor = 0.8
-            max_tilt = 0.4
-            roll_compensation = correction_factor * np.clip(roll, -max_tilt, max_tilt)
-            pitch_compensation = correction_factor * np.clip(pitch, -max_tilt, max_tilt)
-            self.publish_imu_stabilization_debug(roll, pitch, roll_compensation, pitch_compensation)
-            rmat = euler2mat(roll_compensation, pitch_compensation, 0)
-
-            rotated_foot_locations = rmat.T @ rotated_foot_locations
+            if has_velocity_input:
+                yaw,pitch,roll = state.euler_orientation
+                correction_factor = 0.8
+                max_tilt = 0.4
+                roll_compensation = correction_factor * np.clip(roll, -max_tilt, max_tilt)
+                pitch_compensation = correction_factor * np.clip(pitch, -max_tilt, max_tilt)
+                self.publish_imu_stabilization_debug(roll, pitch, roll_compensation, pitch_compensation)
+                rmat = euler2mat(roll_compensation, pitch_compensation, 0)
+                rotated_foot_locations = rmat.T @ rotated_foot_locations
+            else:
+                rotated_foot_locations = self.stabilise_with_IMU(rotated_foot_locations, state.euler_orientation)
 
             state.joint_angles = self.inverse_kinematics(
                 rotated_foot_locations, self.config

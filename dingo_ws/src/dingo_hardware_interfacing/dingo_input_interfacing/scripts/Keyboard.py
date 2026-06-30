@@ -41,17 +41,17 @@ class Keyboard:
         elif key == '1':
             msg.buttons[5] = 1
         elif key == '2':
-            msg.buttons[0] = 1
+            msg.buttons[1] = 1
         elif key == self.keyboard.Key.backspace:
             msg.buttons[4] = 1
         elif key == self.keyboard.Key.up:
-            msg.axes[4] = 0.5*self.speed_multiplier
+            msg.axes[5] = 0.5*self.speed_multiplier
         elif key == self.keyboard.Key.down:
-            msg.axes[4] = -0.5*self.speed_multiplier
+            msg.axes[5] = -0.5*self.speed_multiplier
         elif key == self.keyboard.Key.left:
-            msg.axes[3] = 0.5*self.speed_multiplier
+            msg.axes[2] = 0.5*self.speed_multiplier
         elif key == self.keyboard.Key.right:
-            msg.axes[3] = -0.5*self.speed_multiplier
+            msg.axes[2] = -0.5*self.speed_multiplier
         elif key == '0':
             msg.axes[7] = 0.0
         elif key == '9':
@@ -87,17 +87,17 @@ class Keyboard:
         elif key == '1':
             msg.buttons[5] = 0
         elif key == '2':
-            msg.buttons[0] = 0
+            msg.buttons[1] = 0
         elif key == self.keyboard.Key.backspace:
             msg.buttons[4] = 0
         elif key == self.keyboard.Key.up:
-            msg.axes[4] = 0.0
+            msg.axes[5] = 0.0
         elif key == self.keyboard.Key.down:
-            msg.axes[4] = 0.0
+            msg.axes[5] = 0.0
         elif key == self.keyboard.Key.left:
-            msg.axes[3] = 0.0
+            msg.axes[2] = 0.0
         elif key == self.keyboard.Key.right:
-            msg.axes[3] = 0.0
+            msg.axes[2] = 0.0
         elif key == '0':
             msg.axes[7] = 0.0
         elif key == '9':

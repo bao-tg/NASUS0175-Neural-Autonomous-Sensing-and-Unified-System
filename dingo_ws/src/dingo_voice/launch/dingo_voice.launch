@@ -11,24 +11,24 @@
   <arg name="camera_source" default="csi"/>
   <arg name="camera_device" default="/dev/video0"/>
 
-  <node pkg="dingo_gpt" type="tts_node.py" name="tts_node" output="screen">
+  <node pkg="dingo_voice" type="tts_node.py" name="tts_node" output="screen">
     <param name="playback_device" value="$(arg playback_device)"/>
   </node>
 
-  <node pkg="dingo_gpt" type="stt_node.py" name="stt_node" output="screen">
+  <node pkg="dingo_voice" type="stt_node.py" name="stt_node" output="screen">
     <param name="model" value="$(arg stt_model)"/>
   </node>
 
-  <node pkg="dingo_gpt" type="intent_llm_node.py" name="intent_llm_node" output="screen">
+  <node pkg="dingo_voice" type="intent_llm_node.py" name="intent_llm_node" output="screen">
     <param name="speak_unknown" value="false"/>
   </node>
 
-  <node pkg="dingo_gpt" type="scene_describer_node.py" name="scene_describer_node" output="screen">
+  <node pkg="dingo_voice" type="scene_describer_node.py" name="scene_describer_node" output="screen">
     <param name="camera_source" value="$(arg camera_source)"/>
     <param name="camera_device" value="$(arg camera_device)"/>
   </node>
 
-  <node pkg="dingo_gpt" type="wakeup_and_record_node.py" name="wakeup_and_record_node" output="screen">
+  <node pkg="dingo_voice" type="wakeup_and_record_node.py" name="wakeup_and_record_node" output="screen">
     <param name="audio_device" value="$(arg audio_device)"/>
     <param name="wake_phrase" value="$(arg wake_phrase)"/>
     <param name="wake_aliases" value="$(arg wake_aliases)"/>

@@ -14,6 +14,7 @@ class State:
         self.euler_orientation = np.array([0.0, 0.0, 0.0])
         self.imu_active = 0
         self.imu_zero_orientation = np.array([0.0, 0.0, 0.0])
+        self.raw_euler_orientation = np.array([0.0, 0.0, 0.0])
         self.ticks = 0
         self.foot_locations = np.zeros((3, 4))
         self.rotated_foot_locations = np.zeros((3, 4))

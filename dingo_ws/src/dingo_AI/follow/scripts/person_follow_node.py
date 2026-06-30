@@ -76,11 +76,14 @@ class PersonFollowNode:
         self.joy_topic = rospy.get_param("~joy_topic", "joy")
         self.joy_rate_hz = float(rospy.get_param("~joy_rate_hz", 30.0))
         self.linear_axis_value = float(rospy.get_param("~linear_axis_value", 0.5))
+        self.linear_axis_index = int(rospy.get_param("~linear_axis_index", 1))
         self.step_duration = float(rospy.get_param("~step_duration", 0.35))
         self.yaw_duration = float(rospy.get_param("~yaw_duration", 0.45))
         self.button_pulse_duration = float(rospy.get_param("~button_pulse_duration", 0.18))
+        self.button_trot = int(rospy.get_param("~button_trot", 5))
         self.yaw_axis_sign = float(rospy.get_param("~yaw_axis_sign", -1.0))
         self.yaw_axis_scale = float(rospy.get_param("~yaw_axis_scale", 2.0))
+        self.yaw_axis_index = int(rospy.get_param("~yaw_axis_index", 2))
         self.return_to_rest_after_command = bool(rospy.get_param("~return_to_rest_after_command", True))
 
         self.enable_appearance_reacquire = bool(rospy.get_param("~enable_appearance_reacquire", True))
@@ -448,13 +451,13 @@ class PersonFollowNode:
 
     def ensure_trot(self):
         if not self.in_trot:
-            self.pulse_button(5)
+            self.pulse_button(self.button_trot)
             self.in_trot = True
             rospy.sleep(0.15)
 
     def ensure_rest(self):
         if self.in_trot:
-            self.pulse_button(5)
+            self.pulse_button(self.button_trot)
             self.in_trot = False
             rospy.sleep(0.15)
 
@@ -511,16 +514,16 @@ class PersonFollowNode:
             yaw_cmd = max(-self.max_yaw_cmd, min(self.max_yaw_cmd, raw_yaw))
             self.smoothed_yaw = (1.0 - self.smooth_alpha) * self.smoothed_yaw + self.smooth_alpha * yaw_cmd
             axes = self.neutral_axes()
-            axes[3] = max(-1.0, min(1.0, self.yaw_axis_sign * self.smoothed_yaw * self.yaw_axis_scale))
+            axes[self.yaw_axis_index] = max(-1.0, min(1.0, self.yaw_axis_sign * self.smoothed_yaw * self.yaw_axis_scale))
             if self.start_joy_command(axes, self.yaw_duration):
                 self.last_command_time = now
-                self.state = f"turn id={self.target_id} yaw_axis={axes[3]:.3f} err={center_error_norm:.3f}"
+                self.state = f"turn id={self.target_id} yaw_axis={axes[self.yaw_axis_index]:.3f} err={center_error_norm:.3f}"
                 action = "turn"
             else:
                 self.state = f"turn_wait id={self.target_id} err={center_error_norm:.3f}"
                 action = "turn_wait"
             self.status_pub.publish(String(data=self.state))
-            self.publish_debug_command(action, target, center_error_norm=center_error_norm, yaw_axis=axes[3])
+            self.publish_debug_command(action, target, center_error_norm=center_error_norm, yaw_axis=axes[self.yaw_axis_index])
             return
 
         if self.publish_zero_yaw and abs(self.smoothed_yaw) > 1e-3:
@@ -536,10 +539,10 @@ class PersonFollowNode:
             steps = int(round(raw_steps))
             steps = max(1, min(self.max_steps, steps))
             axes = self.neutral_axes()
-            axes[1] = self.linear_axis_value
+            axes[self.linear_axis_index] = self.linear_axis_value
             if self.start_joy_command(axes, max(steps, 1) * self.step_duration):
                 self.last_command_time = now
-                self.state = f"forward id={self.target_id} steps={steps} axis={axes[1]:.2f} area_ratio={area_ratio:.3f} target={self.target_area_ratio:.3f}"
+                self.state = f"forward id={self.target_id} steps={steps} axis={axes[self.linear_axis_index]:.2f} area_ratio={area_ratio:.3f} target={self.target_area_ratio:.3f}"
                 action = "forward"
             else:
                 self.state = f"forward_wait id={self.target_id} steps={steps} area_ratio={area_ratio:.3f}"

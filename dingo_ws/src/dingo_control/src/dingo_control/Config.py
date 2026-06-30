@@ -13,7 +13,7 @@ class Configuration:
         self.ps4_deactivated_color = PS4_DEACTIVATED_COLOR    
 
         #################### COMMANDS ####################
-        self.max_x_velocity = 1.2
+        self.max_x_velocity = 1.0
         self.max_y_velocity = 0.5
         self.max_yaw_rate = 2.0
         self.max_pitch = 30.0 * np.pi / 180.0
@@ -31,7 +31,7 @@ class Configuration:
 
         #################### IMU STABILISATION PID ####################
         # PID output is an additional roll/pitch compensation angle [rad].
-        self.imu_stabilization_kp = 0.6
+        self.imu_stabilization_kp = 0.7
         self.imu_stabilization_ki = 0.001
         self.imu_stabilization_kd = 0.005
         self.imu_stabilization_deadband = m.radians(2)

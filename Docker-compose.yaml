@@ -1,22 +1,48 @@
-
-version: '3.4'
+version: "3.8"
 
 services:
   dingoquadruped:
-    image: dingo_ws
-    network_mode: "host"
-    privileged: true
-    cap_add:
-      - SYS_PTRACE
-    security_opt:
-      - seccomp:unconfined   
-    volumes:
-      - ./dingo_ws:/dingo_ws
-      - /etc/timezone:/etc/timezone:ro
-      - /etc/localtime:/etc/localtime:ro
-    devices:
-      - /dev:/dev
+    image: "${DINGO_IMAGE_NAME:-dingo-full:latest}"
+    container_name: "${DINGO_CONTAINER_NAME:-dingo_full}"
     build:
       context: .
       dockerfile: ./Dockerfile
-    command: /bin/sh -c "while sleep 1000; do :; done"
+    network_mode: host
+    pid: host
+    privileged: true
+    stdin_open: true
+    tty: true
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      DISPLAY: "${DISPLAY:-:0}"
+      QT_X11_NO_MITSHM: "1"
+      XAUTHORITY: "${XAUTHORITY:-/tmp/.docker.xauth}"
+      OPENBLAS_CORETYPE: "ARMV8"
+      BLINKA_JETSON_NANO: "1"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_API_BASE: "${OPENAI_API_BASE:-https://api.openai.com/v1}"
+      LD_LIBRARY_PATH: "/host_cuda/targets/aarch64-linux/lib:/host_cuda/lib64:/usr/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra-egl"
+      __EGL_VENDOR_LIBRARY_FILENAMES: "/usr/lib/aarch64-linux-gnu/tegra-egl/nvidia.json"
+      GST_PLUGIN_PATH: "/opt/nvidia-gstreamer-1.0"
+      GST_REGISTRY: "/tmp/gst-registry-dingo-vision.bin"
+    volumes:
+      - ./dingo_ws/src:/dingo_ws/src:rw
+      - ./dingo_ws/build:/dingo_ws/build:rw
+      - ./dingo_ws/devel:/dingo_ws/devel:rw
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /dev:/dev:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - "${XAUTHORITY:-/tmp/.docker.xauth}:${XAUTHORITY:-/tmp/.docker.xauth}:rw"
+      - /tmp/argus_socket:/tmp/argus_socket
+      - /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro
+      - /usr/lib/aarch64-linux-gnu/tegra-egl:/usr/lib/aarch64-linux-gnu/tegra-egl:ro
+      - /usr/lib/aarch64-linux-gnu/gstreamer-1.0:/opt/nvidia-gstreamer-1.0:ro
+      - /usr/include/aarch64-linux-gnu:/host_tensorrt_include:ro
+      - /usr/lib/aarch64-linux-gnu:/host_tensorrt_lib:ro
+      - /usr/local/cuda:/host_cuda:ro
+      - "${HOME}/models:${HOME}/models:ro"
+    command: /bin/bash

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>dingo_gpt</name>
+  <name>dingo_voice</name>
   <version>0.0.0</version>
-  <description>The dingo_gpt package</description>
+  <description>The dingo_voice package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/dingo_gpt</url> -->
+  <!-- <url type="website">http://wiki.ros.org/dingo_voice</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->

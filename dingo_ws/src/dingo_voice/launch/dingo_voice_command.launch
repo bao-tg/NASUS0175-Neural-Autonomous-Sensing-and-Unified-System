@@ -3,6 +3,11 @@
   <arg name="is_physical" default="1"/>
   <arg name="use_imu" default="0"/>
   <arg name="serial_port" default="/dev/ttyS0"/>
+  <arg name="joy_axis_x" default="1"/>
+  <arg name="joy_axis_y" default="0"/>
+  <arg name="joy_axis_yaw" default="2"/>
+  <arg name="joy_axis_height" default="7"/>
+  <arg name="joy_button_trot" default="5"/>
 
   <arg name="audio_device" default="plughw:2,0"/>
   <arg name="playback_device" default="plughw:2,0"/>
@@ -25,9 +30,14 @@
     <arg name="use_keyboard" value="0"/>
     <arg name="use_joystick" value="0"/>
     <arg name="serial_port" value="$(arg serial_port)"/>
+    <arg name="joy_axis_x" value="$(arg joy_axis_x)"/>
+    <arg name="joy_axis_y" value="$(arg joy_axis_y)"/>
+    <arg name="joy_axis_yaw" value="$(arg joy_axis_yaw)"/>
+    <arg name="joy_axis_height" value="$(arg joy_axis_height)"/>
+    <arg name="joy_button_trot" value="$(arg joy_button_trot)"/>
   </include>
 
-  <include file="$(find dingo_gpt)/launch/dingo_voice.launch">
+  <include file="$(find dingo_voice)/launch/dingo_voice.launch">
     <arg name="audio_device" value="$(arg audio_device)"/>
     <arg name="playback_device" value="$(arg playback_device)"/>
     <arg name="wake_phrase" value="$(arg wake_phrase)"/>
@@ -38,10 +48,16 @@
     <arg name="beep_duration" value="$(arg beep_duration)"/>
   </include>
 
-  <node pkg="dingo_gpt" type="voice_command_joy_bridge.py" name="voice_command_joy_bridge" output="screen">
+  <node pkg="dingo_voice" type="voice_command_joy_bridge.py" name="voice_command_joy_bridge" output="screen">
     <param name="step_duration" value="$(arg step_duration)"/>
     <param name="linear_axis_value" value="$(arg linear_axis_value)"/>
     <param name="turn_axis_value" value="$(arg turn_axis_value)"/>
     <param name="seconds_per_90_degrees" value="$(arg seconds_per_90_degrees)"/>
+    <param name="joy_topic" value="/joy/voice"/>
+    <param name="joy_axis_x" value="$(arg joy_axis_x)"/>
+    <param name="joy_axis_y" value="$(arg joy_axis_y)"/>
+    <param name="joy_axis_yaw" value="$(arg joy_axis_yaw)"/>
+    <param name="joy_axis_height" value="$(arg joy_axis_height)"/>
+    <param name="joy_button_trot" value="$(arg joy_button_trot)"/>
   </node>
 </launch>

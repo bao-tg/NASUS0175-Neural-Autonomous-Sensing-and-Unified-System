@@ -14,7 +14,7 @@ There are three main features in our project:
 + Vision tracking feature
 + Control via controller 
 
-> Put video here!
+[The video demonstration of our project can be found here](https://drive.google.com/file/d/196Zn1yN19xxayYDoAQtbUYIs4UL_btg8/view?usp=sharing)
 
 # Getting Started
 
